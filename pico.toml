@@ -1,0 +1,43 @@
+name = "pico-logging"
+
+[infra]
+repository = "https://github.com/jamesfxley/pico-tooling.git"
+
+
+[[footprint]]
+name = "log probe"
+elf = "build-firmware/tests/firmware/pico_logging_log_probe.elf"
+ram_kib = 8
+flash_kib = 64
+
+[[symbols]]
+name = "allocation (log probe)"
+mode = "image"
+path = "build-firmware/tests/firmware/pico_logging_log_probe.elf"
+sets = ["allocating-formatter"]
+
+[[symbols]]
+name = "allocation refuses its fixture"
+mode = "image"
+path = "build-firmware/tests/firmware/pico_logging_allocating_fixture.elf"
+sets = ["allocating-formatter"]
+expect = "refused"
+
+[[symbols]]
+name = "heap (log probe objects)"
+mode = "objects"
+path = "build-firmware/tests/firmware/CMakeFiles/pico_logging_log_probe.dir"
+sets = ["c-heap-alloc"]
+
+[[symbols]]
+name = "heap (compiled formatter objects)"
+mode = "objects"
+path = "build-firmware/src/logging/CMakeFiles/pico_logging_logging.dir"
+sets = ["c-heap-alloc"]
+
+[[symbols]]
+name = "heap refuses its fixture"
+mode = "objects"
+path = "build-firmware/tests/firmware/CMakeFiles/pico_logging_heap_call_fixture.dir"
+sets = ["c-heap-alloc"]
+expect = "refused"

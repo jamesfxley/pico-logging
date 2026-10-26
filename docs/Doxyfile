@@ -1,0 +1,16 @@
+# Doxygen configuration for the pico-logging API reference.
+#
+# Everything that does not vary lives in infra/house/config/Doxyfile.base; only the three
+# fields below differ between repositories. Doxygen applies assignments in
+# order, so these win over the include.
+#
+#   doxygen docs/Doxyfile      (output: docs/api/html/index.html, gitignored)
+
+@INCLUDE_PATH = infra/house/config
+@INCLUDE      = Doxyfile.base
+
+PROJECT_NAME  = pico-logging
+PROJECT_BRIEF = "Logging for host builds and Raspberry Pi Pico firmware"
+INPUT         = src/include \
+                src/logging/include \
+                src/testing/include

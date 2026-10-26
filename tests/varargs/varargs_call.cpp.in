@@ -1,0 +1,19 @@
+// Negative control for the printf rule in src/.clang-tidy: a source the rule
+// must REJECT. printf_rule_control.py copies it beside a copy of that
+// configuration as a .cpp and runs clang-tidy over it, so a rule that stopped
+// matching -- a broken regex, an option that no longer applies -- is reported
+// as itself rather than as a silent pass over the real tree.
+//
+// rewind is on the check's default list and is not a printf-family function:
+// the rule reports only the family, so that call must pass unreported.
+//
+// Kept as .cpp.in so no build target compiles it and no lint run sees a
+// translation unit outside the compile database.
+
+#include <cstdio>
+
+void format_a_double(char* out, unsigned long size, double value) {
+    std::snprintf(out, size, "%g", value);
+}
+
+void restart(std::FILE* file) { std::rewind(file); }

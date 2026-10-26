@@ -1,0 +1,15 @@
+# AR-1: no printf-family call on the shipped log path. newlib's floating-point
+# conversions reach _dtoa_r, _Balloc and _malloc_r, so a call allocates on the
+# log path of a long-running image. Scoped to src/, the shipped library; tests
+# are free to call snprintf. The option's format is documented for clang-tidy 20
+# at
+# https://releases.llvm.org/20.1.0/tools/clang/tools/extra/docs/clang-tidy/checks/bugprone/unsafe-functions.html
+# ("functionRegex[, replacement[, reason]]" entries separated by semicolons).
+# ReportDefaultFunctions is off so that only the printf family is reported here;
+# an entry carries no comma inside its reason. The negative control is
+# tests/varargs/printf_rule_control.py.
+InheritParentConfig: true
+CheckOptions:
+  bugprone-unsafe-functions.ReportDefaultFunctions: false
+  bugprone-unsafe-functions.CustomFunctions: >-
+    ^::(std::)?v?(f|s|sn)?printf$,,newlib's floating-point conversions allocate

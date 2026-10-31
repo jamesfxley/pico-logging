@@ -16,9 +16,8 @@ under the SDK's default stdio the log path does not reach it. That second half
 turns on the stream's buffering mode, which the specification forbids settling
 by reading newlib's sources. This is the device run that settles it.
 
-**Status: no run on 0.1.0 is recorded.** The run awaits a separately authorized
-device session. Until it is recorded, the second half of AR-2 is unverified for
-0.1.0.
+**Status: no run on 0.1.0 is recorded (FW-3).** Until it is recorded, the
+second half of AR-2 is unverified for 0.1.0.
 
 A run records these conditions: date, the pico-logging and pico-util revisions,
 the board and `clk_sys`, the Pico SDK version and C library type, the toolchain
@@ -95,9 +94,8 @@ and both include code this library does not own — newlib's time calls, the
 SDK's `critical_section` — so they are measured on the board rather than read
 off this library's own frames.
 
-**Status: no run on 0.1.0 is recorded.** The run awaits a separately authorized
-device session. Until it is recorded, AR-5's depth and CR-4's masked interval
-are unverified for 0.1.0.
+**Status: no run on 0.1.0 is recorded (FW-3).** Until it is recorded, AR-5's
+depth and CR-4's masked interval are unverified for 0.1.0.
 
 A run covers `Release`, `Debug` and `MinSizeRel`, each with stdio over USB and
 with stdio over USB and UART, and records the date, the pico-logging and

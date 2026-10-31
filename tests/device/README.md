@@ -12,9 +12,9 @@ Settles AR-2: whether the log path through `StderrSink` reaches the allocator.
 It counts calls to `_malloc_r` — the function `__smakebuf_r` calls — across a
 burst through the default sink, against a deliberate allocation in the same run
 that the counter must observe. `measurements.md` beside it describes the run
-and records each result with its conditions; no run on 0.1.0 is recorded yet.
-Re-run it rather than assuming a result if the libc, its stdio buffering, or
-the SDK version changes.
+and records each result with its conditions; no run on 0.1.0 is recorded yet
+(FW-3). Re-run it rather than assuming a result if the libc, its stdio
+buffering, or the SDK version changes.
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk \
@@ -66,4 +66,4 @@ cmake --build build-device-uart --target cr4_ring_sink_costs
 ```
 
 `measurements.md` describes the run and records each result with its
-conditions; no run on 0.1.0 is recorded yet.
+conditions; no run on 0.1.0 is recorded yet (FW-3).

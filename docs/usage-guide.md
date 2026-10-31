@@ -189,16 +189,16 @@ describes the run that measures it on an RP2350.
 **One consumer.** Call `drain()` from one context only, normally the main loop.
 It does not take the lock.
 
-**Size the stack for two statements.** A log statement reaches up to 1.75 KiB
-of stack below its caller (`AR-5`), and a handler that
-logs while the main loop is inside a statement puts both on the main stack:
-3.5 KiB, plus the exception frame (up to 104 bytes with floating-point
-context). That exceeds the Pico SDK's default `PICO_STACK_SIZE` of 2 KiB, and
-an overflow there is silent. Raise it to 4 KiB in an image whose handlers log,
-which is the most it can be: the SDK places core 0's stack in `SCRATCH_Y`, a
-4 KiB region on the RP2350, and a larger value fails to link. That leaves about
-400 bytes for the main loop's and the handler's own frames, so keep a handler
-that logs shallow.
+**Size the stack for two statements.** A log statement reaches up to 1.75 KiB of
+stack below its caller (`AR-5`; its measurement on 0.1.0 is FW-3), and a handler
+that logs while the main loop is inside a statement puts both on the main stack:
+3.5 KiB, plus the exception frame (up to 104 bytes with floating-point context).
+That exceeds the Pico SDK's default `PICO_STACK_SIZE` of 2 KiB, and an overflow
+there is silent. Raise it to 4 KiB in an image whose handlers log, which is the
+most it can be: the SDK places core 0's stack in `SCRATCH_Y`, a 4 KiB region on
+the RP2350, and a larger value fails to link. That leaves about 400 bytes for
+the main loop's and the handler's own frames, so keep a handler that logs
+shallow.
 
 ```cmake
 target_compile_definitions(app PRIVATE PICO_STACK_SIZE=0x1000)

@@ -180,7 +180,8 @@ for the cross-compiled probe's footprint.
 
 ## Releases
 
-Versioning is semver: breaking changes only at a major version. The notes on
+Versioning is semver under `EN-06.1`: a break lands at a minor bump while the
+major version is 0, at a major bump from 1.0. The notes on
 each [release](https://github.com/jamesfxley/pico-logging/releases) record what
 changed and, for a break, what to change in your own code (`EN-06.3`).
 

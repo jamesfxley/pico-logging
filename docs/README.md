@@ -7,6 +7,7 @@
 | [technical-specification.md](technical-specification.md) | **Normative.** Requirement IDs (`AR`/`FR`/`BR`/`CR`/`OR`), their pass criteria, and the traceability matrix | Deciding whether a behaviour is required or incidental, or changing one |
 | [architecture.md](architecture.md) | Descriptive. How the implementation is put together — a statement's life, the two filters, the float formatter, the sinks | Working out where a change belongs |
 | [usage-guide.md](usage-guide.md) | Practical use beyond the README: bringing it up in firmware, choosing a filter, the per-TU ceiling, the no-allocation guarantee, logging from an ISR | Building an application on the library |
+| [future-work.md](future-work.md) | Work deliberately not built, one entry per deferral, each with its reason and what would have to be true to build it | Asking whether something is absent on purpose, or before proposing it |
 | [deviations.md](deviations.md) | Standing (scope-wide) deviations from the coding standard, each with a rationale, a risk assessment and a review date | Adding or reviewing a suppression |
 | [deviation-budget.txt](deviation-budget.txt) | Per-language suppression ceilings. These only ever ratchet down | Same |
 | [requirement-prefixes.txt](requirement-prefixes.txt) | The requirement prefix convention checked by review | Adding a requirement under a new prefix |
@@ -19,8 +20,8 @@ device run, [tests/firmware/measurements.md](../tests/firmware/measurements.md)
 for the cross-compiled probe's footprint.
 
 The specification is the only normative document here. `architecture.md`
-describes what is, and work deliberately not done is an issue in the tracker
-rather than a document in the tree (`EN-03.7`).
+describes what is, and work deliberately not done is an entry in
+[future-work.md](future-work.md) (`EN-03.7`); the issue tracker holds defects.
 
 A behaviour claimed in `README.md` or `docs/orientation.md` but absent from the
 specification is not a commitment, and a requirement is not satisfied until the

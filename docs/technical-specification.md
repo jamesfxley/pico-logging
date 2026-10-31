@@ -17,13 +17,13 @@ reused or renumbered (`EN-02.3`).
 
 | | |
 |---|---|
-| Targets | The host (GCC/Clang, hosted libc) and RP2350 freestanding cross builds. The same translation units serve both; there is no firmware-conditional code. An RP2040 board is refused at configure: CR-1's atomics are not lock-free on ARMv6-M. |
+| Targets | The host (GCC/Clang, hosted libc) and RP2350 freestanding cross builds. The same translation units serve both; there is no firmware-conditional code. An RP2040 board is refused at configure (AR-6); a build for it is FW-1. |
 | Language | C++20. |
 | Public surface | `namespace pico_logging`, headers under the `pico_logging/` prefix. Three consumer-facing targets: `pico_logging::core`, the INTERFACE umbrella a consumer links; `pico_logging::logging`, the compiled module it carries, linkable alone; and `pico_logging::testing`, the header-only capture sink a consumer's own suite asserts against, which is host-only and not created in a firmware build. `pico_logging_strict` is exported as an artefact of `install(EXPORT)` and is not one a consumer links. |
-| Out of scope | Log routing, rotation, filtering by category or subsystem, and any persistence. A `Sink` is the seam where those belong, and implementing one is the consumer's job. |
+| Out of scope | Log routing, rotation, any persistence, and filtering by category or subsystem. A consumer's `Sink` is the seam where those belong, and implementing one is the consumer's job. Per-module levels in the library itself are FW-2. |
 
-**API stability:** semantic versioning; breaking changes only at a major
-version.
+**API stability:** semantic versioning under `EN-06.1`: a break lands at a
+minor bump while the major version is 0, at a major bump from 1.0.
 
 The library is used on a dual-core RP2350 alongside lwIP, whose callbacks run in
 a background/interrupt context. The concurrency requirements (CR) are written
@@ -72,9 +72,9 @@ for that setting.
      line that caused it rather than as a symbol in a linked image.
   5. The AR-2 device run described in `tests/device/measurements.md`, which
      counts `_malloc_r` across a burst through the default sink and must
-     observe none. No run on 0.1.0 is recorded yet, so this evidence is
-     pending. Every one of those lines formatted a timestamp, so it is the only
-     evidence here covering the libc calls `format_timestamp` makes:
+     observe none. That run is not recorded for 0.1.0 (FW-3), so this
+     evidence is pending. Every one of those lines formatted a timestamp, so it
+     is the only evidence here covering the libc calls `format_timestamp` makes:
      `_tzset_unlocked_r` references `_malloc_r` and `free`, so the allocator is
      in that path's link graph whether or not it is reached. It covers one
      configuration, one SDK version and mainline context, and nothing more.
@@ -129,8 +129,8 @@ for that setting.
   admissible way to settle it — not by reading newlib's sources. Counting calls
   to `_malloc_r` across a burst through the default sink gives zero, against a
   deliberate allocation in the same run that the counter must observe. The run
-  and its negative control are described in `tests/device/measurements.md`; no
-  run on 0.1.0 is recorded yet, so this half is pending for 0.1.0.
+  and its negative control are described in `tests/device/measurements.md`; the
+  run is not recorded for 0.1.0 (FW-3), so this half is pending for 0.1.0.
 
   **This is a property of a configuration, not of the sink.** It holds for the
   stdio a Pico SDK consumer gets by default; a build whose `stderr` is fully
@@ -173,14 +173,16 @@ for that setting.
   puts two statements and an exception frame on the main stack: 3.5 KiB and up
   to 104 bytes. That exceeds the Pico SDK's default `PICO_STACK_SIZE` of 2 KiB
   and fits, with about 400 bytes to spare, within the 4 KiB that `SCRATCH_Y`,
-  where the SDK places it, allows. The bound is verified by measurement on the
-  RP2350; no run on 0.1.0 is recorded yet (`tests/device/measurements.md`).
+  where the SDK places it, allows. The bound is established by
+  measurement on the RP2350, which is pending for 0.1.0 (FW-3,
+  `tests/device/measurements.md`).
 
 - **AR-6 — A board without an RP2350 is refused at configure.** CR-1's atomics
   are lock-free only where the core has exclusive access, which ARMv6-M lacks,
   so the library declares `PLATFORM rp2350` to the family bootstrap, which
   refuses a board without what a library declares. A consumer adding it on an RP2040 board fails at configure, naming the
-  platform, rather than at CR-1's `static_assert` in the build.
+  platform, rather than at CR-1's `static_assert` in the build. A build for an
+  RP2040 board is FW-1.
 
 ---
 
@@ -484,10 +486,10 @@ that test applies (`EN-02.5`).
 | AR-1 | `allocation_test` (`TheLogPathAllocatesNothing`, `TruncationAllocatesNothing`, `RingSinkQueuesAndDrainsWithoutAllocating`); the `symbols` gate tables `allocation (log probe)` and `heap (log probe objects)` in `pico.toml`; `lint` over `src/` and CTest `pico_logging_printf_rule_refuses_snprintf` and `pico_logging_debug_string_has_no_throw_path` | The counter reads zero across a burst covering every inserter branch and the escaping of a control byte and a backslash; the cross-compiled image defines no `_dtoa_r`/`_Balloc` and the probe's objects reach no allocator; no printf-family call appears in `src/`; the -Og probe objects reference no `__throw_out_of_range_fmt` |
 | AR-1 (footprint) | the `footprint` gate table `log probe` in `pico.toml` | The probe's static RAM (allocated sections excluding read-only load images at their LMA, heap and stack reservations) and flash (all `LOAD` sections) each stay inside their budget, so a formatting choice cannot add a step change to either while the allocation gates stay green |
 | AR-1 (gate integrity) | the `[[symbols]]` controls `allocation refuses its fixture` and `heap refuses its fixture` in `pico.toml` (`expect = "refused"`, over `tests/firmware/allocating_fixture.cpp` and `tests/firmware/heap_call_fixture.cpp`); `tests/varargs/printf_rule_control.py` (over `tests/varargs/varargs_call.cpp.in`); `allocation_test` (`TheCounterObservesAnAllocation`) | Each gate **fails**, naming its finding, on an input it must reject, and the host counter does observe an allocation — so a pass from any of them means something |
-| AR-2 | `tests/device/ar2_heap_watermark.cpp`, run on device; the image inspection recorded with it | Counting calls to `_malloc_r` across a burst through the default sink gives zero, while a deliberate allocation in the same run is observed — so the zero is a measurement rather than a dead counter; and the image links `__swsetup_r` and `__smakebuf_r`, and `__smakebuf_r` calls `_malloc_r`, re-derived with the commands the record carries. Procedure, and the image inspection's 0.1.0 result, in `tests/device/measurements.md`; the device run on 0.1.0 is pending |
+| AR-2 | `tests/device/ar2_heap_watermark.cpp`, run on device; the image inspection recorded with it | Counting calls to `_malloc_r` across a burst through the default sink gives zero, while a deliberate allocation in the same run is observed — so the zero is a measurement rather than a dead counter; and the image links `__swsetup_r` and `__smakebuf_r`, and `__smakebuf_r` calls `_malloc_r`, re-derived with the commands the record carries. Procedure, and the image inspection's 0.1.0 result, in `tests/device/measurements.md`; the device run on 0.1.0 is pending (FW-3) |
 | AR-3 | The compiler, at `src/logging/sinks.cpp` (`constinit const LogState LOG_STATE_STORAGE{}`); `logging_test` sink and level tests | Module state is constant-initialised, so it is reachable before any constructor has run and carries no guard variable. If that stopped holding, every build fails at that line, host and cross alike |
 | AR-4 | `ring_sink_test` (`AFullRingDropsWholeLinesAndCountsThem`, `IndicesWrapAndDrainedSlotsAreReused`) | Capacity is the template parameter and does not grow under load. That every buffer in the module is a fixed-extent array is review-only: no input can make a buffer grow, so what establishes it is reading the declarations |
-| AR-5 | `tests/device/cr4_ring_sink_costs.cpp`, run on device; the record in `tests/device/measurements.md` | The deepest of the measured statements — the first in the image, fixed and exponent floats, strings, and a message cut at capacity — reaches no more than 1,792 bytes below its caller in a `Release`, a `Debug` and a `MinSizeRel` build on the RP2350, through a `RingSink` and through the default `StderrSink` with the USB interrupt live, with stdio over USB alone and over USB and UART, while a 512-byte control frame in the same run is observed at 512 or more, so the depth is a measurement rather than an unpainted stack; the run on 0.1.0 is pending. That a consumer's sink does not log is review-only: the sink is outside this tree |
+| AR-5 | `tests/device/cr4_ring_sink_costs.cpp`, run on device; the record in `tests/device/measurements.md` | The deepest of the measured statements — the first in the image, fixed and exponent floats, strings, and a message cut at capacity — reaches no more than 1,792 bytes below its caller in a `Release`, a `Debug` and a `MinSizeRel` build on the RP2350, through a `RingSink` and through the default `StderrSink` with the USB interrupt live, with stdio over USB alone and over USB and UART, while a 512-byte control frame in the same run is observed at 512 or more, so the depth is a measurement rather than an unpainted stack; the run on 0.1.0 is pending (FW-3). That a consumer's sink does not log is review-only: the sink is outside this tree |
 | AR-6 | the consumer case `pico-w-refused` in `house.toml`, built by the `consumer` gate over `tests/consumer-board/` | A consumer adding the library on `pico_w` fails at configure, saying `PICO_LOGGING needs PICO_PLATFORM rp2350` |
 | FR-1 | `logging_test` (`LogLineWritesWhenEnabled`, `HeaderStartsWithFormattedTimestamp`, `LabelAndColorMatchLevels`, `ControlCharactersInTextAreEscaped`, `TheCutNeverSplitsAnEscape`, `TheCutNeverSplitsAdjacentEscapes`) | One statement produces one newline-terminated line carrying a complete timestamp, the level label, and `<file>:<line>: ` immediately before the message; a newline, carriage return, tab, escape or delete byte in text streamed as a `string_view`, a `const char*`, a literal or a `char` renders as its escape, a backslash doubles, a UTF-8 sequence passes through unchanged, and the line's only newline is its last byte; a line cut at capacity keeps an escape whole or drops it whole, at every position the cut can reach |
 | FR-2 | `logging_test` (`EachLineIsExactlyOneWriteAndOneFlush`) | Exactly one `write()` and one `flush()` per statement, the write carrying the whole line |

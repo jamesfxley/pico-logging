@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
 
 # A standalone CMake project, deliberately: the top-level build never adds this
-# directory, so every configuration CI builds still links no SDK sources. Same
-# arrangement as tests/consumer/, and for the same reason -- this one needs a
+# directory. Like tests/consumer/, it has a separate build because it needs a
 # dependency the library itself does not have.
 #
 #   cmake -S examples/bench -B build-device -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -15,8 +14,8 @@ set(PICO_BOARD pico2_w CACHE STRING "Target board")
 
 if(NOT DEFINED ENV{PICO_SDK_PATH})
     message(FATAL_ERROR
-        "PICO_SDK_PATH is not set. This directory is the only part of "
-        "pico-logging that links the Pico SDK; the library does not.")
+        "PICO_SDK_PATH is not set. These standalone measurement images "
+        "require the Pico SDK.")
 endif()
 
 # The SDK's own importer rather than a vendored copy: there is one consumer of

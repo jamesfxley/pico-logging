@@ -1,10 +1,9 @@
 # Device measurements
 
 A standalone CMake project. The top-level build never references this
-directory, so every configuration CI builds still links no SDK sources — this
-is the only part of pico-logging that links the Pico SDK, and the lint gate skips
-it via the root `.lintignore` because its sources are not in this tree's
-compile database.
+directory. The lint gate skips its sources via the root `.lintignore` because
+they are absent from the root build's compile database. The firmware correctness
+tier lives separately in `tests/device/`.
 
 ## `ar2_heap_watermark`
 

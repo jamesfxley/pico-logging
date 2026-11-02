@@ -72,9 +72,13 @@ open the repository in its dev container to use that image. The `infra/` git
 submodule ([pico-tooling](https://github.com/jamesfxley/pico-tooling)) carries
 the gates, the CMake helpers and the pinned guides; clone with
 `git clone --recurse-submodules` or run
-`git submodule update --init --recursive` after a plain clone. Flash the device
-test with the family device CLI described in
-[examples/bench/README.md](examples/bench/README.md).
+`git submodule update --init --recursive` after a plain clone. The host suite
+runs portable behavior checks; the firmware build adds a CR-4 device test under `tests/device/` for mainline and IRQ
+producers sharing the SDK critical-section adapter. Build it with
+`python3 dev.py build --tree firmware` and run it using the
+[pinned device-test convention](infra/guides/device.md#device-tests).
+Standalone device measurements live in
+[examples/bench/](examples/bench/README.md).
 
 ```bash
 python3 dev.py check    # every gate; a change is done when this is green

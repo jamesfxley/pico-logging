@@ -19,6 +19,6 @@
 tests/consumer/*
 tests/consumer-level/*
 
-# The Pico SDK measurement rig behind AR-2 (tests/device/measurements.md).
+# The Pico SDK measurement rig behind AR-2 (examples/bench/measurements.md).
 # Standalone CMake project; needs PICO_SDK_PATH, which this library does not.
-tests/device/*
+examples/bench/*

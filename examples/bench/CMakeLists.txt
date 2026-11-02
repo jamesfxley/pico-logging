@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.26)
 # arrangement as tests/consumer/, and for the same reason -- this one needs a
 # dependency the library itself does not have.
 #
-#   cmake -S tests/device -B build-device -G Ninja -DCMAKE_BUILD_TYPE=Release
+#   cmake -S examples/bench -B build-device -G Ninja -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build-device
 #
 # Needs PICO_SDK_PATH in the environment. Produces

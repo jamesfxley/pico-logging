@@ -29,7 +29,7 @@ checks are declared in `pico.toml`.
   [usage-guide.md](usage-guide.md).
 - The formatting domain and truncation rules are in the specification;
   [architecture.md](architecture.md) explains the implementation.
-- Device measurements live in `tests/device/`; those sources belong to their
+- Device measurements live in `examples/bench/`; those sources belong to their
   separate build and are absent from this tree's compile database.
 - The TSan test uses `setarch -R` and needs permission for
   `personality(ADDR_NO_RANDOMIZE)`. Its container must allow that operation.

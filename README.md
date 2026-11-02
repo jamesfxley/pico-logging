@@ -74,7 +74,7 @@ the gates, the CMake helpers and the pinned guides; clone with
 `git clone --recurse-submodules` or run
 `git submodule update --init --recursive` after a plain clone. Flash the device
 test with the family device CLI described in
-[tests/device/README.md](tests/device/README.md).
+[examples/bench/README.md](examples/bench/README.md).
 
 ```bash
 python3 dev.py check    # every gate; a change is done when this is green
@@ -174,7 +174,7 @@ bootstrap is `cmake/pico_family_bootstrap.cmake`.
   per release, and what to change in your code when an API broke
 
 Run records live beside the rig that produced them:
-[tests/device/measurements.md](tests/device/measurements.md) for the AR-2
+[examples/bench/measurements.md](examples/bench/measurements.md) for the AR-2
 device run, [tests/firmware/measurements.md](tests/firmware/measurements.md)
 for the cross-compiled probe's footprint.
 

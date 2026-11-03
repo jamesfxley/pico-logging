@@ -100,7 +100,7 @@ depth and CR-4's masked interval are unverified for 0.1.0.
 A run covers `Release`, `Debug` and `MinSizeRel`, each with stdio over USB and
 with stdio over USB and UART, and records the date, the pico-logging and
 pico-util revisions, the board and `clk_sys`, the Pico SDK version and C library
-type, and the toolchain. The rig is `tests/device/cr4_ring_sink_costs.cpp`,
+type, and the toolchain. The rig is `examples/bench/cr4_ring_sink_costs.cpp`,
 built as `README.md` says for each build type and stdio routing. Its sinks are
 `RingSink<4, TimedCriticalSection>` over a counting sink, the lock the SDK
 `critical_section` with SysTick read inside it, measured with interrupts

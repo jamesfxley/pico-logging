@@ -1,10 +1,9 @@
 # Device measurements
 
 A standalone CMake project. The top-level build never references this
-directory, so every configuration CI builds still links no SDK sources — this
-is the only part of pico-logging that links the Pico SDK, and the lint gate skips
-it via the root `.lintignore` because its sources are not in this tree's
-compile database.
+directory. The lint gate skips its sources via the root `.lintignore` because
+they are absent from the root build's compile database. The firmware correctness
+tier lives separately in `tests/device/`.
 
 ## `ar2_heap_watermark`
 
@@ -18,14 +17,14 @@ buffering, or the SDK version changes.
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk \
-  cmake -S tests/device -B build-device -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  cmake -S examples/bench -B build-device -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DFETCHCONTENT_SOURCE_DIR_PICO_UTIL=/path/to/pico-util
 cmake --build build-device          # -> build-device/*.uf2
 ```
 
 `FETCHCONTENT_SOURCE_DIR_PICO_UTIL` names the pico-util checkout to measure
 against. The sibling-checkout lookup resolves from the top-level source
-directory, which for this project is `tests/device/`, so it does not find a
+directory, which for this project is `examples/bench/`, so it does not find a
 checkout beside the repository; without the override the configure fetches
 pico-util's pinned release instead.
 
@@ -59,7 +58,7 @@ report is still read over USB, so no UART adapter is needed:
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk \
-  cmake -S tests/device -B build-device-uart -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  cmake -S examples/bench -B build-device-uart -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DPICO_LOGGING_DEVICE_STDIO_UART=ON \
         -DFETCHCONTENT_SOURCE_DIR_PICO_UTIL=/path/to/pico-util
 cmake --build build-device-uart --target cr4_ring_sink_costs

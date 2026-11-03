@@ -9,16 +9,16 @@ project(pico_logging VERSION 0.1.0 LANGUAGES C CXX ASM)
 
 # No firmware-conditional code: the same portable library (headers +
 # src/logging/sinks.cpp) serves host and firmware builds. The SDK is initialised only so
-# that the cross tree is the family's one build-firmware/ tree; no target here
-# links an SDK library.
+# that the cross tree is the family's one build-firmware/ tree and the device
+# test can exercise the SDK critical-section adapter.
 house_cxx_common_settings(${PICO_LOGGING_BUILD_FIRMWARE})
 pico_family_init_sdk(${PICO_LOGGING_BUILD_FIRMWARE})
 
-# -Werror at target scope, because the probes link no SDK library: nothing
-# third-party compiles into these targets, so every diagnostic is actionable and
-# no VENDOR_SOURCES keyword is needed. FREESTANDING follows the toolchain, which
-# is the helper's default.
-house_cxx_add_strict_target(pico_logging_strict)
+# The device test links SDK sources. Keep vendor diagnostics separate; the
+# device-test helper applies -Werror to its owned sources and the warning gate
+# checks all owned build output. FREESTANDING follows the toolchain.
+house_cxx_add_strict_target(pico_logging_strict
+    VENDOR_SOURCES ${PICO_LOGGING_BUILD_FIRMWARE})
 
 # Declares PICO_LOGGING_SANITIZE. Before the targets, and build-wide rather
 # than target-scoped, so fetched GoogleTest is instrumented too -- ASan's
@@ -95,6 +95,10 @@ endif()
 if(PICO_LOGGING_ENABLE_FIRMWARE_PROBE)
     enable_testing()
     add_subdirectory(tests/firmware)
+endif()
+
+if(PROJECT_IS_TOP_LEVEL AND PICO_LOGGING_BUILD_FIRMWARE)
+    add_subdirectory(tests/device)
 endif()
 
 if(PICO_LOGGING_ENABLE_INSTALL)

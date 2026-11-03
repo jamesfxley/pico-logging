@@ -183,7 +183,7 @@ context that logs, so its lock has to exclude each of them from every other.
 One that an interrupt handler can pre-empt the holder of — a mutex that does
 not mask interrupts — deadlocks the handler. The lock is held across one line's
 copy into its slot and nothing else, so interrupts stay masked for at most the
-time it takes to copy `LOG_LINE_SIZE` bytes; `tests/device/measurements.md`
+time it takes to copy `LOG_LINE_SIZE` bytes; `examples/bench/measurements.md`
 describes the run that measures it on an RP2350.
 
 **One consumer.** Call `drain()` from one context only, normally the main loop.
@@ -215,7 +215,7 @@ included — is assembled before the sink is called, so the clock read,
 `localtime_r` and `strftime` still run in your handler. The last two call
 newlib's `__tz_lock`, which is an empty function unless a port retargets
 newlib's locks; in an image that does, a FreeRTOS build typically, it is a real
-lock and the deadlock above is back (`CR-5`). `tests/device/measurements.md`
+lock and the deadlock above is back (`CR-5`). `examples/bench/measurements.md`
 carries the commands to check your own toolchain and SDK.
 
 ## Version constants

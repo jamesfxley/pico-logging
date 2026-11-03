@@ -80,7 +80,7 @@ pico-logging.
 
 The device run on 0.1.0 that settles the second half of AR-2 (the log path
 through `StderrSink` does not reach the allocator), AR-5's stack depth and
-CR-4's masked interval. `tests/device/measurements.md` records no run on 0.1.0,
+CR-4's masked interval. `examples/bench/measurements.md` records no run on 0.1.0,
 so these three are unverified for 0.1.0.
 
 ### Why it is not built
@@ -95,7 +95,7 @@ does not own.
 A device session on an RP2350 board in which the AR-2 rig runs in its one
 configuration, stdio over USB, and the AR-5 and CR-4 rig runs for `Release`,
 `Debug` and `MinSizeRel` with stdio over USB and over USB and UART. Each
-result is recorded in `tests/device/measurements.md` with its conditions.
+result is recorded in `examples/bench/measurements.md` with its conditions.
 The statements that mark these results pending then say what was measured.
 
 ### Version cost

@@ -15,7 +15,7 @@
 
 Measured results are not in this directory. A run record lives beside the rig
 that produced it, with the conditions it was taken under (`EN-03.2`):
-[tests/device/measurements.md](../tests/device/measurements.md) for the AR-2
+[examples/bench/measurements.md](../examples/bench/measurements.md) for the AR-2
 device run, [tests/firmware/measurements.md](../tests/firmware/measurements.md)
 for the cross-compiled probe's footprint.
 

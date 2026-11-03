@@ -171,7 +171,7 @@ That `StderrSink` links an allocator at all is not in dispute; AR-2 is the
 narrower claim that the log path does not *reach* it, which is a property of
 the SDK's default stdio buffering rather than of the sink. It is settled by a
 device run, described in
-[tests/device/measurements.md](../tests/device/measurements.md), whose run on
+[examples/bench/measurements.md](../examples/bench/measurements.md), whose run on
 0.1.0 is pending (FW-3), and re-measured rather than assumed if the libc or its
 buffering changes.
 

@@ -71,8 +71,15 @@ class Capture final : public pico_logging::Sink {
             }
             const auto producer = static_cast<unsigned char>(record.bytes[0]);
             const auto sequence = static_cast<unsigned char>(record.bytes[1]);
+            // SDK pico/critical_section.h guarantees local IRQ masking until
+            // unlock. The IRQ forced inside lock() must therefore follow the
+            // mainline commit. Each batch accepts two mainline/IRQ pairs and
+            // drops the next two; an early unlock must not reverse those pairs.
+            const auto expected_sequence = ((index / RING_SLOTS) * RING_SLOTS) +
+                                           ((index % RING_SLOTS) / PRODUCERS);
             if (producer >= PRODUCERS || sequence >= RECORDS_PER_PRODUCER ||
-                sequence < next[producer]) {
+                producer != index % PRODUCERS ||
+                sequence != expected_sequence || sequence < next[producer]) {
                 return false;
             }
             const auto expected = offered(producer, sequence);
@@ -206,8 +213,8 @@ int main() {
         hardware_alarm_unclaim(alarm);
     }
     run.check("CR-4", "ring-sink-irq-producers-preserve-lines", passed,
-              passed
-                  ? "whole ordered records; full-ring drops and reuse"
-                  : "alarm, completion, record integrity or accounting failed");
+              passed ? "whole ordered records; full-ring drops and reuse"
+                     : "alarm, completion, record order, integrity or "
+                       "accounting failed");
     run.finish();
 }

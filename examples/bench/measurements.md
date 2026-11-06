@@ -1,9 +1,9 @@
 # AR-2: does the log path through `StderrSink` allocate?
 
-Observations, not requirements. The specification states gates; the numbers a
-gate was set from live here, with the conditions that produced them
-(`EN-03.2`, `EN-06.7`). Nothing here is normative, and a stale figure is a
-stale figure rather than a broken promise.
+These are observations and not requirements. The specification states gates;
+the numbers a gate was set from live here, with the conditions that produced
+them (`EN-03.2`, `EN-06.7`). Nothing here is normative, and a stale figure is
+out of date and breaks no promise.
 
 Re-measure by rebuilding the run below. A number without its build type and
 toolchain cannot be compared against anything.
@@ -11,13 +11,13 @@ toolchain cannot be compared against anything.
 The rig is `ar2_heap_watermark.cpp` beside this file; `README.md` says how
 to build, flash and read it.
 
-AR-2 records that an image linking `StderrSink` links an allocator, and that
-under the SDK's default stdio the log path does not reach it. That second half
-turns on the stream's buffering mode, which the specification forbids settling
-by reading newlib's sources. This is the device run that settles it.
+An image linking `StderrSink` links an allocator, and under the SDK's default
+stdio the log path does not reach it (AR-2). That second half turns on the
+stream's buffering mode, which the specification does not let newlib's sources
+settle. This is the device run that settles it.
 
-**Status: no run on 0.1.0 is recorded (FW-3).** Until it is recorded, the
-second half of AR-2 is unverified for 0.1.0.
+Status: no run on 0.1.0 is recorded (FW-3). Until it is recorded, the second
+half of the claim is unverified for 0.1.0.
 
 A run records these conditions: date, the pico-logging and pico-util revisions,
 the board and `clk_sys`, the Pico SDK version and C library type, the toolchain
@@ -26,7 +26,7 @@ nothing calls `set_sink`) and the rig, built as `README.md` says.
 
 Instrument: `-Wl,--wrap=_malloc_r`, counting calls and bytes. `_malloc_r` is
 the function `__smakebuf_r` calls, so the count is of the exact event in
-question; the SDK wraps `malloc`, a different symbol, so the two coexist.
+question. The SDK wraps `malloc`, a different symbol, so the two coexist.
 `mallinfo().uordblks` and the program break are recorded alongside as secondary
 evidence.
 
@@ -35,17 +35,17 @@ with these samples: a baseline before any log, after one `StderrSink` line,
 after a 500-line burst, and after a deliberate `malloc(1024)`. The last is the
 instrument's negative control and is what makes the first three mean anything:
 a deliberate allocation has to move every column, so a stationary counter is a
-stationary heap rather than a dead counter.
+stationary heap and not a dead counter.
 
 A result is a property of its configuration, not of `StderrSink` in the
-abstract: a build whose `stderr` is fully buffered would allocate a buffer on
+abstract. A build whose `stderr` is fully buffered would allocate a buffer on
 first write.
 
 ## The image inspection
 
-AR-2's first half: linking `StderrSink` links newlib stdio, and the stream
-set-up it brings calls the allocator. Settled without a board, by reading a
-linked image.
+The first half of the claim is that linking `StderrSink` links newlib stdio, and
+that the stream set-up it brings calls the allocator (AR-2). It is settled
+without a board, by reading a linked image.
 
 The image is the cross-compiled log probe. It isolates `StderrSink`: it logs
 only through a `RingSink` draining to a sink that touches no stdio, and it
@@ -79,23 +79,24 @@ arm-none-eabi-objdump -d --no-show-raw-insn "$ELF" |
 | `__smakebuf_r` present | yes |
 | `__smakebuf_r` calls | `_fstat_r`, `_malloc_r` twice, `_isatty_r` |
 
-**Result: an image linking `StderrSink`, and logging through a different sink,
-links `__swsetup_r` and `__smakebuf_r`, and `__smakebuf_r` calls `_malloc_r`.**
+Result: an image linking `StderrSink`, and logging through a different sink,
+links `__swsetup_r` and `__smakebuf_r`, and `__smakebuf_r` calls `_malloc_r`.
 
 ---
 
 # AR-5 and CR-4: what a log statement costs the context it runs in
 
-Observations, not requirements, on the same terms as the section above.
+These are observations and not requirements, on the same terms as the section
+above.
 
-AR-5 bounds how deep into the stack a log statement reaches, and CR-4's lock is
-held with interrupts masked. Both are figures a consumer sizes an image from,
-and both include code this library does not own — newlib's time calls, the
-SDK's `critical_section` — so they are measured on the board rather than read
-off this library's own frames.
+A log statement reaches a bounded depth into the stack (AR-5), and the producer
+lock is held with interrupts masked (CR-4). Both are figures a consumer sizes
+an image from, and both include code this library does not own (newlib's time
+calls, the SDK's `critical_section`), so they are measured on the board and not
+read off this library's own frames.
 
-**Status: no run on 0.1.0 is recorded (FW-3).** Until it is recorded, AR-5's
-depth and CR-4's masked interval are unverified for 0.1.0.
+Status: no run on 0.1.0 is recorded (FW-3). Until it is recorded, the stack
+depth and the masked interval are unverified for 0.1.0.
 
 A run covers `Release`, `Debug` and `MinSizeRel`, each with stdio over USB and
 with stdio over USB and UART, and records the date, the pico-logging and
@@ -124,8 +125,8 @@ under the lock as the control.
 
 Through `StderrSink` the USB driver's event dispatch, or the USB handler, can go
 deeper than the statement, but only when a transfer completes during it, so the
-depth varies from run to run; AR-5's bound has to cover the deepest statement
-plus that excursion. Stdio over RTT or semihosting is not covered.
+depth varies from run to run. The bound has to cover the deepest statement plus
+that excursion (AR-5). Stdio over RTT or semihosting is not covered.
 
 The rig counts one dropped line in each run: the five `RingSink` statements run
 with interrupts masked and nothing draining, into a four-slot ring.
@@ -134,18 +135,19 @@ with interrupts masked and nothing draining, into a four-slot ring.
 
 # CR-5: does the timestamp path take a lock?
 
-Observations, not requirements, on the same terms as the section above.
+These are observations and not requirements, on the same terms as the section
+above.
 
-CR-4 says the producer may be an interrupt handler. Everything before
+The producer can be an interrupt handler (CR-4). Everything before
 `sink->write()` runs in that context, and `format_timestamp` is the first thing
-on it — so the question CR-3 asks of `std::fwrite` has to be asked of
+on it, so the question CR-3 asks of `std::fwrite` has to be asked of
 `localtime_r` and `strftime` too.
 
-Unlike AR-2 this is settled without a board. The answer is a property of the
-libc that gets linked, and it is visible in the toolchain's own archives, which
-is admissible where reading newlib's sources is not. It is also the more useful
-form: it can be re-derived for any toolchain in a few seconds, where a device
-run answers for one board and one SDK.
+Unlike the AR-2 device run, this is settled without a board. The answer is a
+property of the libc that gets linked, and it is visible in the toolchain's own
+archives, which is admissible where reading newlib's sources is not. It is also
+the more useful form: it can be re-derived for any toolchain in a few seconds,
+where a device run answers for one board and one SDK.
 
 | Condition | Value |
 |---|---|
@@ -195,22 +197,21 @@ arm-none-eabi-objdump -d libc_a-lock.o
 | `__retarget_lock_acquire` in the archive | not present: this newlib is not built with retargetable locking |
 
 The clock read, from the same linked image: `_gettimeofday` is the SDK's, and
-calls `time_us_64` — two reads of the timer's high word around one of its low
-word, retried until the high word agrees — then a 64-bit division helper. It
+calls `time_us_64` (two reads of the timer's high word around one of its low
+word, retried until the high word agrees), then a 64-bit division helper. It
 takes no lock and calls nothing else.
 
-**Result: the timestamp path takes newlib's TZ lock in the call graph, and that
-lock is an empty function in this toolchain; the SDK 2.3.0 clock read takes no
-lock.** The hazard CR-3
-describes is therefore not reachable through `format_timestamp` in these
-builds, and becomes reachable the moment a port supplies a real
-`__retarget_lock_*` — which is what a FreeRTOS build does.
+Result: the timestamp path takes newlib's TZ lock in the call graph, and that
+lock is an empty function in this toolchain. The SDK 2.3.0 clock read takes no
+lock. The hazard CR-3 describes is therefore not reachable through
+`format_timestamp` in these builds. It becomes reachable the moment a port
+supplies a real `__retarget_lock_*`, which is what a FreeRTOS build does.
 
-Two further observations from the same inspection, recorded because they bear
-on AR-1 rather than on CR-5:
+Two further observations from the same inspection bear on the allocation
+requirement (AR-1) and not on the lock question (CR-5):
 
 - `_tzset_unlocked_r` references `_malloc_r` and `free`. The allocator is in
-  the timestamp path's link graph, whether or not it is reached — which is why
-  AR-1 cites the AR-2 burst above rather than resting on the symbol gates.
+  the timestamp path's link graph, whether or not it is reached. That is why
+  AR-1 cites the AR-2 burst above and does not rest on the symbol gates.
 - `strftime` references `sniprintf`, newlib's integer-only formatter, the
   non-allocating one.

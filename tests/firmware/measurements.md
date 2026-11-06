@@ -1,9 +1,9 @@
 # Cross-compiled probe footprint
 
-Observations, not requirements. The specification states gates; the numbers a
-gate was set from live here, with the conditions that produced them
-(`EN-03.2`, `EN-06.7`). Nothing here is normative, and a stale figure is a
-stale figure rather than a broken promise.
+These are observations and not requirements. The specification states gates;
+the numbers a gate was set from live here, with the conditions that produced
+them (`EN-03.2`, `EN-06.7`). Nothing here is normative, and a stale figure is
+out of date and breaks no promise.
 
 Re-measure by rebuilding the run below. A number without its build type and
 toolchain cannot be compared against anything.
@@ -33,17 +33,17 @@ all of it. It is the image the footprint gate measures.
 
 The difference is 158,156 bytes of `text`: the `std::to_chars` image is almost
 four times the size. It is not the formatter's own code: every `ryu::` symbol in
-the `std::to_chars` image totals 137,179 bytes, of which four lookup tables —
-`POW10_SPLIT_2` (75,192), `POW10_SPLIT` (29,376), `DOUBLE_POW5_INV_SPLIT` (5,472)
-and `DOUBLE_POW5_SPLIT` (5,216) — account for 115,256. libstdc++'s
-shortest-round-trip path reaches Ryu's fixed-notation renderer, so the tables are
-referenced and survive `--gc-sections`.
+the `std::to_chars` image totals 137,179 bytes, of which four lookup tables
+(`POW10_SPLIT_2` (75,192), `POW10_SPLIT` (29,376), `DOUBLE_POW5_INV_SPLIT`
+(5,472) and `DOUBLE_POW5_SPLIT` (5,216)) account for 115,256. libstdc++'s
+shortest-round-trip path reaches Ryu's fixed-notation renderer, so the tables
+are referenced and survive `--gc-sections`.
 
 The `std::to_chars` row is produced by replacing the body of
 `LogLine::write_float` with a `std::to_chars` call into the same buffer and
-rebuilding; it is a throwaway patch, not a configuration.
+rebuilding. It is a throwaway patch and not a configuration.
 
 The 64 KiB flash budget the firmware job enforces is set above the first row on
-purpose: it exists to catch a step change of the size in the second, not to
+purpose: it exists to catch a step change of the size in the second and does not
 police a few hundred bytes. The 8 KiB static-RAM budget is loose for the same
 reason.

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""OR-2: the compile-time ceiling reaches no linked entity.
+"""Check that the compile-time ceiling reaches no linked entity (OR-2).
 
 A behavioural test cannot hold this: an inline constexpr variable or an
-inlined function reading the ceiling is an ODR violation the optimiser folds
-away, so each unit still behaves as compiled. This holds it structurally.
+inlined function reading the ceiling is an ODR violation that the optimiser
+folds away, so each unit still behaves as compiled. This script holds it
+structurally.
 
 The names checked are the ceiling's three macros and every macro whose #define
-names one of them, directly or through another -- so a statement macro, an
-enable macro or an alias counts as the ceiling. Outside comments, every line
-of every file under src/ naming one of them must be a preprocessor directive
-or a line of a #define continued onto it, and a conditional naming one may
-contain only preprocessor lines: code inside it would be a definition
-selected by the ceiling.
+names one of them, directly or through another, so a statement macro, an enable
+macro or an alias counts as the ceiling. Outside comments, every line of every
+file under src/ naming one of them must be a preprocessor directive or a line
+of a #define continued onto it. A conditional naming one may contain only
+preprocessor lines, because code inside it would be a definition selected by
+the ceiling.
 
     level_ceiling_is_macro_only.py <repository>/src
 

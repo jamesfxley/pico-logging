@@ -1,4 +1,4 @@
-# AR-1: a no-exceptions log statement must not reach a throwing substring path.
+# A no-exceptions log statement must not reach a throwing substring path (AR-1).
 file(GLOB_RECURSE objects "${OBJECT_ROOT}/*.o" "${OBJECT_ROOT}/*.obj")
 if(NOT objects)
     message(FATAL_ERROR "no probe objects at ${OBJECT_ROOT}")

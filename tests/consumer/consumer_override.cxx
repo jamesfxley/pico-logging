@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-// OR-2, OR-4: one target of a consumer overrides the ceiling the package was
-// configured with. The package's value is the default for every target that
-// says nothing, and this target's own LOGGING_GLOBAL_LEVEL wins -- without a
-// redefinition, which this target's -Werror would refuse.
+// One target of a consumer overrides the ceiling the package was configured
+// with. The package's value is the default for every target that says nothing,
+// and this target's own LOGGING_GLOBAL_LEVEL wins without a redefinition, which
+// this target's -Werror would reject.
+// OR-2, OR-4
 #include "pico_logging/pico_logging.hpp"
 
 static_assert(PICO_LOGGING_EFFECTIVE_LEVEL == 1,

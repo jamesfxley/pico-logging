@@ -1,15 +1,5 @@
 // SPDX-License-Identifier: MIT
-// FR-5. The hand-rolled float formatter, at every edge of its domain.
-//
-// It exists because the two obvious alternatives are both unacceptable here:
-// snprintf("%g") allocates on newlib (AR-1), and std::to_chars for a double
-// takes the cross-compiled probe to about four times its size, because
-// libstdc++'s shortest-round-trip path reaches Ryu's fixed-notation lookup
-// tables. This one is under 2 KiB and allocates nothing
-// (tests/firmware/measurements.md).
-//
-// The price is a restricted domain, and a restricted domain is only safe if
-// its edges are pinned. That is what this file is for.
+// The hand-rolled float formatter, at every edge of its domain (FR-5).
 
 #include <gtest/gtest.h>
 
@@ -29,8 +19,7 @@
 
 namespace {
 
-/// Formats into a full-size scratch buffer and returns the result as a string,
-/// so a failing expectation prints something readable.
+/// Formats into a full-size scratch buffer and returns a string.
 std::string format(double value) {
     std::array<char, pico_logging::NUMERIC_FORMAT_SIZE> buffer{};
     const std::string_view formatted =
@@ -40,7 +29,6 @@ std::string format(double value) {
 
 }  // namespace
 
-// A value the caller cannot act on must not look like one they can.
 TEST(FloatFormatTest, SpecialValuesRenderAsThemselves) {
     EXPECT_EQ(format(std::numeric_limits<double>::quiet_NaN()), "nan");
     EXPECT_EQ(format(std::numeric_limits<double>::signaling_NaN()), "nan");
@@ -48,8 +36,7 @@ TEST(FloatFormatTest, SpecialValuesRenderAsThemselves) {
     EXPECT_EQ(format(-std::numeric_limits<double>::infinity()), "-inf");
 }
 
-// Negative zero keeps its sign. It is the difference between "underflowed from
-// below" and "is zero", which is exactly the kind of thing a log is read for.
+// The sign of zero tells an underflow from a true zero.
 TEST(FloatFormatTest, ZeroKeepsItsSign) {
     EXPECT_EQ(format(0.0), "0.000000");
     EXPECT_EQ(format(-0.0), "-0.000000");
@@ -58,19 +45,13 @@ TEST(FloatFormatTest, ZeroKeepsItsSign) {
 TEST(FloatFormatTest, FixedNotationRendersTheDigitsItWasGiven) {
     EXPECT_EQ(format(1.0), "1.000000");
     EXPECT_EQ(format(-1.5), "-1.500000");
-    // Inside the fixed range the scaled value is an integer a double holds
-    // exactly, so these digits are not an approximation.
     EXPECT_EQ(format(123.456789), "123.456789");
     EXPECT_EQ(format(-123.456789), "-123.456789");
 }
 
-// Rounding is half away from zero, applied to the value the caller supplied --
-// which is the double, not the decimal text of the literal.
-//
-// The distinction is the whole point of these cases. The double nearest
-// 0.1234565 is 0.12345649999999999679..., strictly below the decimal half, so
-// the correctly rounded sixth place is 6 and not 7. A literal that looks like
-// an exact half almost never is one.
+// Rounding applies to the double and not to the decimal text of the literal:
+// 0.1234565 is a half at the sixth place, but the double nearest it is below
+// that half, so the sixth place is 6 and not 7 (FR-5).
 TEST(FloatFormatTest, RoundsHalfAwayFromZeroAtTheLastDigit) {
     EXPECT_EQ(format(1.0 / 3.0), "0.333333");
     // 0.6666... must round up rather than truncate.
@@ -86,10 +67,8 @@ TEST(FloatFormatTest, RoundsHalfAwayFromZeroAtTheLastDigit) {
     EXPECT_EQ(format(-1.9999996), "-2.000000");
 }
 
-// A real tie, which needs a value 10^-6 can halve exactly: 1/128 scales to
-// 7812.5 on the nose. Only a dyadic rational can land there -- 10^-6 carries a
-// factor of 5^6 -- so a decimal literal will not produce one, and this is the
-// only shape that exercises the half-away-from-zero rule as a rule.
+// A real tie needs a dyadic rational: 1/128 scales to 7812.5 exactly, and a
+// decimal literal cannot, since 10^-6 carries a factor of 5^6.
 TEST(FloatFormatTest, AnExactHalfRoundsAwayFromZero) {
     EXPECT_EQ(format(1.0 / 128.0), "0.007813");
     EXPECT_EQ(format(-1.0 / 128.0), "-0.007813");
@@ -97,23 +76,17 @@ TEST(FloatFormatTest, AnExactHalfRoundsAwayFromZero) {
     EXPECT_EQ(format(-3.0 / 128.0), "-0.023438");
 }
 
-// A product that lands exactly on a half after scaling, with a residual below
-// it: the double 0.0039765 is just under 0.0039765, so it rounds down. Adding
-// the product's offset and the residual in floating point rounds the sum back
-// onto the half and the digit goes up.
+// The double nearest 0.0039765 is just under that decimal, so the product lands
+// exactly on a half with a negative residual and the digit rounds down. Summing
+// the offset and the residual would round back onto the half and carry up.
 TEST(FloatFormatTest, AHalfWithANegativeResidualRoundsDown) {
     EXPECT_EQ(format(0.0039765), "0.003976");
     EXPECT_EQ(format(-0.0039765), "-0.003976");
 }
 
-// The last place is the correctly rounded one across the whole fixed range,
-// not only where the arithmetic happens to be forgiving.
-//
-// Each literal below denotes a double slightly under an exact decimal half, so
-// half-away-from-zero must round it DOWN. Scaling by 10^6 in double rounds the
-// product up to the half first, so without the product's residual carried into
-// the decision the digit goes the wrong way. One per affected decade, because
-// the error grows with magnitude: it is absent below 1e5.
+// Each literal is a double just under a decimal half, so it must round down;
+// the scaled product rounds up to the half unless the residual is carried in.
+// One per decade from 1e5 up, where the error appears (FR-5).
 TEST(FloatFormatTest, TheLastPlaceIsCorrectlyRoundedAcrossTheFixedRange) {
     EXPECT_EQ(format(294936.4972605), "294936.497260");
     EXPECT_EQ(format(351522.9986155), "351522.998615");
@@ -123,38 +96,23 @@ TEST(FloatFormatTest, TheLastPlaceIsCorrectlyRoundedAcrossTheFixedRange) {
     EXPECT_EQ(format(-319925668.4765525), "-319925668.476552");
 }
 
-// A carry that runs the whole width of the fixed range and past its maximum,
-// which is where the widest result comes from.
+// The carry past FLOAT_FIXED_MAX gives the widest result.
 TEST(FloatFormatTest, ACarryRunsPastTheFixedMaximum) {
     EXPECT_EQ(format(0.9999999), "1.000000");
     EXPECT_EQ(format(999999999.9999999), "1000000000.000000");
     EXPECT_EQ(format(-999999999.9999999), "-1000000000.000000");
 }
 
-// The claim FR-5 makes is about every value in the fixed range, and a handful
-// of literals cannot establish that. This walks the whole range against a
-// reference that is correctly rounded by definition.
-//
-// std::to_chars in fixed notation is the reference: correctly rounded by the
-// standard, and the library may not use it for a double only because of what
-// it drags into a firmware image, which is not a constraint on a host test.
-//
-// It rounds half to even where FR-5 rounds half away from zero, so exact ties
-// are excluded. A tie is exactly a value whose product with 128 is an odd
-// integer -- multiplying by a power of two is exact for every double, so that
-// test is itself exact.
-//
-// The sweep is a deterministic stride rather than a random sample: it covers
-// each decade evenly, it is the same set of values on every machine and every
-// run, and a failure names a value that can be pasted straight into a case.
+// Walks the fixed range against std::to_chars, which is correctly rounded but
+// rounds half to even, so exact ties are excluded: a tie has an odd product
+// with 128, and that product is exact. The stride is deterministic, so a
+// failure names a value to paste into a case (FR-5).
 TEST(FloatFormatTest, MatchesACorrectlyRoundedReferenceAcrossTheFixedRange) {
-    // The fixed range spans 1e-4 to 1e9; the sweep covers every decade of it.
     constexpr int LOWEST_DECADE = -4;
     constexpr int HIGHEST_DECADE = 9;
     constexpr int SAMPLES_PER_DECADE = 20000;
-    // An irrational offset within each step, so samples never land on the
-    // round decimal values that a stride alone would produce -- those are the
-    // easy cases, and the interesting ones sit between them.
+    // An irrational offset within each step keeps samples off the round
+    // decimals a stride alone gives, which are the easy cases.
     constexpr double IRRATIONAL_OFFSET = 0.6180339887498949;
     constexpr double HALF_DETECTOR = 128.0;
     constexpr double EVEN_DIVISOR = 2.0;
@@ -199,18 +157,16 @@ TEST(FloatFormatTest, MatchesACorrectlyRoundedReferenceAcrossTheFixedRange) {
                                                  (HIGHEST_DECADE - 1)));
 }
 
-// The stride above never lands near a rounding half: from 1e5 up, step * 1e6
-// is a whole number, so every sample in a decade has the same sixth-place
-// fraction. Rounding errors live beside a half, so this sweep stands on one --
-// (floor(x * 1e6) + 0.5) / 1e6 for a sample x of each decade -- and on the
-// doubles either side of it, which is where a dropped or mis-signed residual
-// renders the wrong last digit.
+// The stride above never lands near a rounding half from 1e5 up. This sweep
+// stands on (floor(x * 1e6) + 0.5) / 1e6 for a sample x of each decade and on
+// the doubles either side, where a dropped or mis-signed residual changes the
+// last digit (FR-5).
 TEST(FloatFormatTest, MatchesTheReferenceBesideEveryRoundingHalf) {
     constexpr int LOWEST_DECADE = -4;
     constexpr int HIGHEST_DECADE = 9;
     // Dense enough to reach the rare value where only the residual's sign
-    // decides the digit: at this density the sweep fails an offset-plus-
-    // residual comparison, which a tenth of it does not.
+    // decides: this density fails an offset-plus-residual comparison, a tenth
+    // of it does not.
     constexpr int SAMPLES_PER_DECADE = 100000;
     constexpr int NEIGHBOURS = 4;
     constexpr double IRRATIONAL_OFFSET = 0.6180339887498949;
@@ -263,17 +219,14 @@ TEST(FloatFormatTest, MatchesTheReferenceBesideEveryRoundingHalf) {
                                                  (HIGHEST_DECADE - 1)));
 }
 
-// A value below FLOAT_FIXED_MIN takes exponent notation rather than being
-// flattened to zeros, which is the point of having a lower threshold at all:
-// "5.000000e-07" says something, "0.000001" says almost nothing and "0.000000"
-// says something false.
+// A value below FLOAT_FIXED_MIN takes exponent notation and is not flattened
+// to zeros.
 TEST(FloatFormatTest, SmallValuesKeepTheirMagnitudeRatherThanFlattening) {
     EXPECT_EQ(format(0.0000005), "5.000000e-07");
     EXPECT_EQ(format(0.0000004), "4.000000e-07");
 }
 
-// Boundary triple at the small end: below it the fixed form would print all
-// zeros, so the notation changes.
+// Boundary triple at the small end.
 TEST(FloatFormatTest, SwitchesToExponentBelowTheFixedMinimum) {
     EXPECT_EQ(format(pico_logging::FLOAT_FIXED_MIN), "0.000100");
     EXPECT_EQ(format(0.000100001), "0.000100");
@@ -283,8 +236,7 @@ TEST(FloatFormatTest, SwitchesToExponentBelowTheFixedMinimum) {
     EXPECT_EQ(format(-1e-9), "-1.000000e-09");
 }
 
-// Boundary triple at the large end: at and above it, the scaled value would
-// leave the range where a double represents every integer exactly.
+// Boundary triple at the large end.
 TEST(FloatFormatTest, SwitchesToExponentAtTheFixedMaximum) {
     EXPECT_EQ(format(pico_logging::FLOAT_FIXED_MAX - 1.0), "999999999.000000");
     EXPECT_EQ(format(pico_logging::FLOAT_FIXED_MAX), "1.000000e+09");
@@ -292,27 +244,23 @@ TEST(FloatFormatTest, SwitchesToExponentAtTheFixedMaximum) {
     EXPECT_EQ(format(-1e15), "-1.000000e+15");
 }
 
-// Rounding can carry the normalised mantissa from 9.9999995 up to 10, which
-// would print two integer digits where exponent notation promises one.
+// A carry from 9.9999995 to 10 would print two integer digits.
 TEST(FloatFormatTest, ARoundingCarryRenormalisesTheExponent) {
     EXPECT_EQ(format(9.9999999e-9), "1.000000e-08");
     EXPECT_EQ(format(-9.9999999e-9), "-1.000000e-08");
     EXPECT_EQ(format(9.9999999e20), "1.000000e+21");
 }
 
-// A three-digit exponent widens the field rather than truncating it, and the
-// extremes of the type stay legible.
+// A three-digit exponent widens the field and is not truncated.
 TEST(FloatFormatTest, TheExtremesOfTheTypeRender) {
     EXPECT_EQ(format(std::numeric_limits<double>::max()), "1.797693e+308");
     EXPECT_EQ(format(std::numeric_limits<double>::min()), "2.225074e-308");
-    // Subnormals need hundreds of scaling steps to normalise; the loop is
-    // bounded and still arrives somewhere sensible.
+    // Subnormals need hundreds of scaling steps; the loop is bounded.
     EXPECT_EQ(format(std::numeric_limits<double>::denorm_min()),
               "4.940656e-324");
 }
 
-// Every result fits the scratch the log path gives it, so the inserter never
-// has to think about the formatter overflowing.
+// Every result fits the log path's scratch.
 TEST(FloatFormatTest, EveryResultFitsTheNumericScratch) {
     const std::array<double, 8> extremes = {
         std::numeric_limits<double>::max(),
@@ -330,10 +278,7 @@ TEST(FloatFormatTest, EveryResultFitsTheNumericScratch) {
     }
 }
 
-// A buffer below the documented worst case is refused, not filled with a
-// prefix. "123" for 12345.6 reads as a number two orders of magnitude out and
-// nothing in the return value distinguishes it from a complete result, so an
-// empty view is the only answer a caller cannot misread (CXX-04.5).
+// A buffer below the worst case yields an empty view and not a prefix (FR-5).
 TEST(FloatFormatTest, ABufferBelowTheWorstCaseIsRefused) {
     for (std::size_t capacity = 0; capacity < pico_logging::FLOAT_FORMAT_MAX;
          ++capacity) {
@@ -352,9 +297,8 @@ TEST(FloatFormatTest, ABufferBelowTheWorstCaseIsRefused) {
     }
 }
 
-// FLOAT_FORMAT_MAX is the worst case over every double, not an estimate: the
-// widest result is a rounding carry past FLOAT_FIXED_MAX with a sign in front,
-// and it fits exactly.
+// FLOAT_FORMAT_MAX is the worst case over every double: a carry past
+// FLOAT_FIXED_MAX with a sign, and it fits exactly.
 TEST(FloatFormatTest, TheWorstCaseFitsTheDocumentedMinimum) {
     std::array<char, pico_logging::FLOAT_FORMAT_MAX> exact{};
     const std::string_view widest =
@@ -364,9 +308,8 @@ TEST(FloatFormatTest, TheWorstCaseFitsTheDocumentedMinimum) {
     EXPECT_EQ(widest.size(), pico_logging::FLOAT_FORMAT_MAX);
 }
 
-// The inserter reaches the same formatter, and a float widens to double first
-// rather than taking a different path. Read back through a sink, so a
-// floating-point branch in LogLine that rendered anything else fails here.
+// A float widens to double and reaches the same formatter; read back through a
+// sink, so a LogLine branch that rendered anything else fails here.
 TEST(FloatFormatTest, TheInserterRendersWhatTheFormatterDoes) {
     pico_logging::testing::CaptureSink sink;
     pico_logging::set_sink(&sink);

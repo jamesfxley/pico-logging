@@ -1,9 +1,8 @@
-# EN-03.5: the C++ examples in the README and the usage guide, compiled from
-# those documents. Each harness here supplies only what its example leaves out;
-# the example itself is read out of the document at configure time, so an API
-# change that breaks one fails this build (EN-03.5's requirement on
-# compiled document examples). The examples that need the Pico SDK are compiled
-# in the cross tree, by tests/firmware/.
+# The C++ examples in the README and the usage guide, compiled from those
+# documents. Each harness here supplies only what its example leaves out; the
+# example itself is read out of the document at configure time, so an API change
+# that breaks one fails this build. The examples that need the Pico SDK are
+# compiled in the cross tree, by tests/firmware/.
 house_cxx_add_doc_examples(pico_logging_doc_examples PACKAGE pico_logging
     DOCUMENTS ${PROJECT_SOURCE_DIR}/README.md
               ${PROJECT_SOURCE_DIR}/docs/usage-guide.md

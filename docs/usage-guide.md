@@ -172,11 +172,12 @@ void start_logging() { pico_logging::set_sink(&log_ring()); }   // once, at boot
 void service_logging() { log_ring().drain(); }                  // in the main loop
 ```
 
-Every log statement now goes through the ring: the main loop's, every handler's
-and the second core's. Each line is copied into a slot under the lock, and the
-main loop forwards it. Only whole lines are queued. When the queue is full, or a
-line is longer than a slot, the line is dropped and `dropped()` counts it.
-Report that counter, because a silent drop and a quiet system look identical.
+With this sink installed, every log line that passes the filters goes through
+the ring: the main loop's, every handler's and the second core's. Each line is
+copied into a slot under the lock, and the main loop forwards it. Only whole
+lines are queued. When the queue is full, or a line is longer than a slot, the
+line is dropped and `dropped()` counts it. Report that counter, because a silent
+drop and a quiet system look identical.
 
 The lock is why several contexts can log. A `RingSink` is written by every
 context that logs, so its lock has to exclude each of them from every other. A

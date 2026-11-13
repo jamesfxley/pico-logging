@@ -160,7 +160,7 @@ and the newlib shims that make `system_clock` reflect it.
 
 - [Documentation index](docs/README.md): what each document is for.
 - [Orientation](docs/orientation.md): how the repository is laid out, and the
-  traps it has already paid for.
+  traps it contains.
 - [Contributing](CONTRIBUTING.md): how a change is made and when it is done.
 - [Technical specification](docs/technical-specification.md): normative;
   requirement IDs, their pass criteria and the traceability matrix.

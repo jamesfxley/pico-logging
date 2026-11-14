@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""AR-1: the printf rule in src/.clang-tidy refuses a printf-family call.
+"""Negative control for the printf rule in src/.clang-tidy (AR-1).
 
 The rule is bugprone-unsafe-functions with CustomFunctions set to the printf
-family (see src/.clang-tidy). A rule only ever seen to pass is not evidence, so
-this runs clang-tidy with that configuration over a fixture calling snprintf and
-passes only when the call is reported at its line with the rule's reason, the
-run fails, and a call to a default-list function (rewind) is not reported. The
-configurations are copied, not rewritten, so the test reads what the shipped
-tree reads.
+family (see src/.clang-tidy). This runs clang-tidy with that configuration over
+a fixture calling snprintf. It passes only when the call is reported at its line
+with the rule's reason, the run fails, and a call to a default-list function
+(rewind) is not reported. The configurations are copied, not rewritten, so the
+test reads what the shipped tree reads.
 
     printf_rule_control.py <repository root>
 
-Exit status: 0 when the call is refused as described, 1 when it is not, 2 when
+Exit status: 0 when the call is reported as described, 1 when it is not, 2 when
 clang-tidy is absent.
 """
 

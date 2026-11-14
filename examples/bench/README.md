@@ -7,13 +7,11 @@ tier lives separately in `tests/device/`.
 
 ## `ar2_heap_watermark`
 
-Settles AR-2: whether the log path through `StderrSink` reaches the allocator.
-It counts calls to `_malloc_r` — the function `__smakebuf_r` calls — across a
-burst through the default sink, against a deliberate allocation in the same run
-that the counter must observe. `measurements.md` beside it describes the run
-and records each result with its conditions; no run on 0.1.0 is recorded yet
-(FW-3). Re-run it rather than assuming a result if the libc, its stdio
-buffering, or the SDK version changes.
+This rig settles whether the log path through `StderrSink` reaches the
+allocator. `measurements.md` beside it describes the method and records each
+result with its conditions. No run on 0.1.0 is recorded yet; see
+[future-work.md](../../docs/future-work.md). If the libc, its stdio buffering
+or the SDK version changes, re-run it and do not assume a result.
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk \
@@ -41,9 +39,9 @@ Measures what a log statement costs the context it runs in: how deep into the
 stack a statement reaches through a `RingSink` behind the SDK's
 `critical_section` and through the default `StderrSink`, and how long
 `RingSink::write` holds the lock, which is how long interrupts stay masked on
-that core. Each figure has a negative control in the same run — a frame of
-known size for the stack, a hold of known length for the lock — and the report
-says so when a control was not observed.
+that core. Each figure has a negative control in the same run (a frame of known
+size for the stack, a hold of known length for the lock), and the report says
+so when a control was not observed.
 
 The `StderrSink` rows run with every interrupt but USB's disabled, so the USB
 driver has transfer events to dispatch, and they mean something only with a
@@ -51,10 +49,10 @@ USB host attached: without one the driver is never called, and the report
 prints `STDERR PATH NOT REACHED` instead of their result.
 
 Built by the same configure as the image above; flash
-`build-device/cr4_ring_sink_costs.uf2` the same way. `AR-5`'s record covers
-three build types, each its own configure, and stdio over USB alone and over
-USB and UART. The UART variant routes the rig's stdio to both drivers; its
-report is still read over USB, so no UART adapter is needed:
+`build-device/cr4_ring_sink_costs.uf2` the same way. The record for the stack
+bound covers three build types, each its own configure, and stdio over USB
+alone and over USB and UART. The UART variant routes the rig's stdio to both
+drivers; its report is still read over USB, so no UART adapter is needed:
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk \
@@ -65,4 +63,5 @@ cmake --build build-device-uart --target cr4_ring_sink_costs
 ```
 
 `measurements.md` describes the run and records each result with its
-conditions; no run on 0.1.0 is recorded yet (FW-3).
+conditions. No run on 0.1.0 is recorded yet; see
+[future-work.md](../../docs/future-work.md).

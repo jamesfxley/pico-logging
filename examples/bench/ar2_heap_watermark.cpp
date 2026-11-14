@@ -1,35 +1,10 @@
 // SPDX-License-Identifier: MIT
-// AR-2's device measurement: does the log path through StderrSink allocate?
+// Device measurement of whether the log path through StderrSink allocates
+// (AR-2). The method and conditions are in measurements.md beside it.
 //
-// AR-2 states that an image linking StderrSink links an allocator -- newlib
-// stdio's __smakebuf_r reaches _malloc_r -- and that under the SDK's default
-// stdio the log path does not reach it. The second half depends on the stream's
-// buffering mode, which the specification forbids settling by reading newlib's
-// sources. This is the measurement that settles it instead.
-//
-// The shape is four samples, taken before anything is printed:
-//
-//   1. baseline, after stdio is up and before any log statement
-//   2. after exactly one line through the default sink -- the event under test
-//   3. after a sustained burst, which is where per-line growth would show
-//   4. after a deliberate malloc, which the samples MUST see
-//
-// The fourth is the instrument's own negative control. Without it "no growth"
-// and "the counter is dead" produce the same output, which is the failure mode
-// this repository's gates exist to rule out. The control's block is published
-// and written, because the compiler is free to delete an allocation whose
-// result is unused.
-//
-// The primary instrument is therefore a count, not a heap delta. `_malloc_r`
-// is the function __smakebuf_r calls, so wrapping it observes the exact event
-// AR-2 is about -- and it observes malloc() too, since that is how malloc
-// reaches the allocator. The SDK wraps `malloc`, a different symbol, so the
-// two do not collide. mallinfo and the program break are kept alongside as
-// secondary evidence rather than as the measurement.
-//
-// Nothing is printed until all four are captured: the reporting path uses
-// stdout, and a buffer allocated for it would land in the middle of the
-// measurement.
+// The four samples, the last a negative control, are listed in measurements.md.
+// Nothing is printed until all four are captured: printing uses stdout, and a
+// buffer allocated for it would land mid-measurement.
 
 #include <unistd.h>
 
@@ -37,20 +12,19 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-// newlib declares the malloc family with _NOTHROW in <stdlib.h> and without it
-// in <malloc.h>. Clang models that attribute as an exception specification and
-// rejects the declaration that adds one, so <stdlib.h> must be seen first.
+// newlib declares the malloc family _NOTHROW in <stdlib.h> and not in
+// <malloc.h>. Clang models that as an exception specification and rejects the
+// redeclaration, so <stdlib.h> must be seen first.
 //
 // The preprocessor guard below is what keeps it that way: clang-format's
 // include regrouping sorts the C header above the C++ one and a blank line
-// does not survive it, but it will not sort across a directive.
+// does not survive it, but it does not sort across a directive.
 #include <cstdlib>
 
 #if defined(__has_include)
 #if __has_include(<malloc.h>)
 #include <malloc.h>
-// A feature-detection flag, not a value: it must be testable by #if, which a
-// constexpr constant cannot be.
+// A flag tested by #if, which a constexpr constant cannot be.
 #define PICO_LOGGING_HAVE_MALLINFO 1
 #endif
 #endif
@@ -59,17 +33,16 @@
 #include "pico_logging/pico_logging.hpp"
 
 namespace {
-// The wrapper's counters. Written from the allocator path, read from main;
-// this image is single-core and has no interrupt that allocates, so plain
-// integers are what they are. `volatile` keeps the reads honest against a
-// compiler that can see no writer.
+// The wrapper's counters, written from the allocator path and read from main.
+// The image is single-core with no allocating interrupt, so plain integers
+// suffice; `volatile` stops the compiler assuming there is no writer.
 volatile unsigned long malloc_calls = 0;
 volatile unsigned long malloc_bytes = 0;
 }  // namespace
 
-// --wrap=_malloc_r, set in CMakeLists.txt. Every reference to _malloc_r from
-// another translation unit -- newlib's __smakebuf_r among them -- resolves
-// here, and __real__malloc_r is the allocator itself.
+// --wrap=_malloc_r (CMakeLists.txt): every reference to _malloc_r from another
+// translation unit, newlib's __smakebuf_r among them, resolves here.
+// __real__malloc_r is the allocator.
 extern "C" {
 void* __real__malloc_r(struct _reent* reent, std::size_t size);
 
@@ -82,13 +55,10 @@ void* __wrap__malloc_r(struct _reent* reent, std::size_t size) {
 
 namespace {
 
-/// One observation, taken at a point in the sequence above.
-///
-/// The call count is the measurement. The other two are corroboration and are
-/// each blind in their own way: uordblks is newlib's count of in-use bytes,
-/// which a free/alloc pair nets back to zero; the program break only ever
-/// rises, so it cannot be fooled that way, but it does not move for an
-/// allocation served from a free block.
+/// One observation. The call count is the measurement; the other two
+/// corroborate it and are each blind in their own way: uordblks nets a
+/// free/alloc pair back to zero, and the program break only rises but does not
+/// move for an allocation served from a free block.
 struct Sample {
     unsigned long calls;
     unsigned long bytes;
@@ -101,8 +71,7 @@ Sample take_sample() {
     const struct mallinfo info = mallinfo();
     const auto in_use = static_cast<std::size_t>(info.uordblks);
 #else
-    // Secondary evidence only. Its absence costs a column, not the
-    // measurement: the count above is what settles AR-2.
+    // Secondary evidence: its absence costs a column, not the result (AR-2).
     const std::size_t in_use = 0;
 #endif
     return Sample{malloc_calls, malloc_bytes, in_use,
@@ -116,30 +85,26 @@ void report_row(const char* label, const Sample& sample, const Sample& base) {
                 static_cast<unsigned long>(sample.program_break));
 }
 
-// Long enough that per-line growth of even a few bytes is unmistakable, short
-// enough to finish promptly over USB CDC.
+// Long enough that per-line growth of a few bytes shows, short enough to finish
+// over USB CDC.
 constexpr int BURST_LINES = 500;
 
-// Comfortably larger than any small-bin rounding, so the control's step is
-// unambiguous.
+// Larger than any small-bin rounding.
 constexpr std::size_t CONTROL_BYTES = 1024;
 constexpr int CONTROL_FILL = 0xA5;
 
-// The control's block, published where the optimiser cannot prove it dead and
-// left allocated on purpose: freeing it would let a later reading of the heap
-// see the space returned and read as if nothing had been taken.
+// Published where the optimiser cannot prove it dead, and left allocated:
+// freeing it would let a later heap reading see the space returned.
 void* volatile control_block = nullptr;
 
-// The console is attached before the board is reset, so this normally returns
-// at once. The bound is there so an unattended board still reaches the report
-// rather than waiting forever.
+// The console is attached before the reset, so the wait below normally ends at
+// once; the bound lets an unattended board carry on.
 constexpr int CONNECT_TIMEOUT_MS = 30000;
 constexpr int CONNECT_POLL_MS = 100;
 
 constexpr int REPORT_INTERVAL_MS = 1000;
 
-// A value with a fractional part, so the burst exercises the float formatter
-// rather than only the integer path.
+// A fractional value, so the burst exercises the float formatter.
 constexpr double RECURRING = 1.0 / 3.0;
 
 }  // namespace
@@ -152,9 +117,8 @@ int main() {
         sleep_ms(CONNECT_POLL_MS);
     }
 
-    // Every sample below is taken before the first printf. The default sink is
-    // deliberately left in place: StderrSink is the subject, so nothing calls
-    // set_sink here.
+    // Every sample is taken before the first printf. The default sink stays:
+    // StderrSink is the subject.
     pico_logging::set_level(pico_logging::Level::INFO);
 
     const Sample baseline = take_sample();
@@ -167,13 +131,9 @@ int main() {
     }
     const Sample after_burst = take_sample();
 
-    // The instrument's negative control. If this row shows nothing, every
-    // other row on this page is meaningless.
-    //
-    // The result has to be published and the block written to. GCC's
-    // allocation-DCE is entitled to delete a malloc/free pair whose result is
-    // never used, and a deleted control reports no allocation because none
-    // happened.
+    // The negative control: if this row shows nothing, every other row is
+    // meaningless. The result is published and written to because GCC can
+    // delete an allocation whose result is unused.
     void* control = std::malloc(CONTROL_BYTES);
     control_block = control;
     if (control != nullptr) {

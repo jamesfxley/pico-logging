@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""The OR-2 structural check refuses each form by which the ceiling reaches code.
+"""Negative control for the structural check of the ceiling (OR-2).
 
-Each case appends one form to a copy of the sources and expects the check to
-refuse it with status 1 and a finding; the tree itself must be accepted. A
-check that stopped looking fails here rather than passing everything.
+The check rejects each form by which the ceiling reaches code. Each case
+appends one form to a copy of the sources and expects the check to reject it
+with status 1 and a finding. The tree itself must be accepted. A check that
+stopped looking fails here and does not pass everything.
 
     level_ceiling_is_macro_only_control.py <repository>/src
 """
@@ -129,7 +130,7 @@ def run_check(directory):
 
 
 def refused(source, work, file, text):
-    """Return a description of what went wrong, or None when the check refused."""
+    """Return what went wrong, or None when the check rejected the source."""
     copy = work / "src"
     shutil.rmtree(copy, ignore_errors=True)
     shutil.copytree(source, copy)

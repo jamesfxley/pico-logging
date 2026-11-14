@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-// FR-3: a value the 64-bit and double paths cannot hold is not rendered as a
-// different value. Built with GNU extensions, CMake's default for a consumer,
-// because that is where a 128-bit integer is an integral type at all: under
-// strict C++20 it takes the placeholder without reaching the integer path.
+// A value the 64-bit and double paths cannot hold does not render as a
+// different value. Built with GNU extensions, CMake's default, because only
+// there is a 128-bit integer an integral type; under strict C++20 it takes the
+// placeholder without reaching the integer path.
+// FR-3
 #include <gtest/gtest.h>
 
 #include <cstddef>

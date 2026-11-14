@@ -1,18 +1,11 @@
 // SPDX-License-Identifier: MIT
-// Proves AR-1: the log path allocates nothing.
+// The log path allocates nothing (AR-1).
 //
-// This is the only test that replaces the global allocation functions, and it
-// is its own executable for that reason -- the replacement is program-wide, so
-// hosting it alongside tests that allocate freely would make every one of them
-// depend on the counter's arming state.
-//
-// The counter is armed around the statements under test and disarmed
-// everywhere else, because GoogleTest itself allocates while reporting.
-//
-// The counter and the replaced allocation functions are pico_util::testing's,
-// which replaces every form: a form left alone keeps the implementation's
-// allocator, and a block from it reaching a replaced deallocation function is
-// an alloc-dealloc-mismatch.
+// The only test that replaces the global allocation functions, so it is its own
+// executable: the replacement is program-wide. The counter is armed around the
+// statements under test only, because GoogleTest allocates while reporting. The
+// replaced functions are pico_util::testing's, which replace every form, so no
+// block crosses allocators.
 
 #include <gtest/gtest.h>
 
@@ -30,17 +23,15 @@
 #include "pico_logging/logging/sinks.hpp"
 #include "pico_util/testing/allocation_counter.hpp"
 
-// Exactly one translation unit per test executable may include this, and this
-// is that unit: the replaceable allocation functions cannot be inline, so a
-// second include is a duplicate-symbol link error.
+// Exactly one translation unit per executable may include this: the replaceable
+// allocation functions cannot be inline, so a second include fails to link.
 #include "pico_util/testing/allocation_operators.ipp"  // IWYU pragma: keep, it defines the replaced operators
 
 namespace {
 
 using pico_util::testing::AllocationGuard;
 
-/// Sink with fixed storage: a std::string-backed one would allocate and the
-/// counter could not tell that apart from the library allocating.
+/// Sink with fixed storage, so the counter sees only the library's allocations.
 class FixedSink : public pico_logging::Sink {
    public:
     void write(std::string_view text) override {
@@ -85,8 +76,7 @@ struct SinkGuard {
 TEST(AllocationTest, TheCounterObservesAnAllocation) {
     const AllocationGuard guard;
     // A string far past any small-string optimisation, so it must reach the
-    // heap. Owning the allocation through std::string rather than a raw new
-    // keeps this to the behaviour under test and needs no suppression.
+    // heap. std::string and not a raw new, which would need a suppression.
     const std::string forced(1024, 'x');
     const std::size_t observed = AllocationGuard::count();
     EXPECT_GE(observed, 1U) << "the counter cannot see allocations, so a zero "
@@ -94,23 +84,20 @@ TEST(AllocationTest, TheCounterObservesAnAllocation) {
     EXPECT_EQ(forced.size(), 1024U);
 }
 
-// AR-1. Every inserter branch, over a burst long enough to exhaust anything a
-// lazily-initialised formatter might have cached on the first call.
+// Every inserter branch, over a burst long enough to exhaust first-call caches.
 // AR-1, FR-7
 TEST(AllocationTest, TheLogPathAllocatesNothing) {
     FixedSink sink;
     const SinkGuard sink_guard(&sink);
     pico_logging::set_level(pico_logging::Level::TRACE);
 
-    // Warm the path once outside the counter: the point of the measurement is
-    // steady-state behaviour, and any one-time cost belongs to start-up.
+    // Warm the path once outside the counter, so only steady state is measured.
     PICO_LOG_ERROR << "warm";
     sink.clear();
 
     constexpr int BURST = 100;
-    // A string literal is a char array, so this covers that inserter branch;
-    // the mutable-array case belongs to logging_test, which is where FR-4's
-    // behaviour rather than its allocation is under test.
+    // A string literal is a char array, so this covers that branch; the mutable
+    // array belongs to logging_test (FR-4).
     constexpr std::int8_t SMALL_SIGNED = -5;
     constexpr double SINGLE_VALUE = 1.5;
     constexpr double RECURRING = 1.0 / 3.0;
@@ -139,8 +126,8 @@ TEST(AllocationTest, TheLogPathAllocatesNothing) {
     EXPECT_EQ(sink.writes(), BURST);
 }
 
-// A truncating line takes a different path through the buffer -- the rewind
-// and the marker -- and must not allocate either.
+// A truncating line takes a different path through the buffer, via the rewind
+// and the marker.
 // AR-1
 TEST(AllocationTest, TruncationAllocatesNothing) {
     FixedSink sink;
@@ -160,7 +147,7 @@ TEST(AllocationTest, TruncationAllocatesNothing) {
     EXPECT_NE(sink.str().find("..."), std::string_view::npos);
 }
 
-// The IRQ-side sink is on the same path and carries the same obligation.
+// The IRQ-side sink is on the log path too.
 // AR-1
 TEST(AllocationTest, RingSinkQueuesAndDrainsWithoutAllocating) {
     FixedSink target;

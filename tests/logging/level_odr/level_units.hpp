@@ -4,7 +4,8 @@
 #include <string_view>
 
 /// \file level_units.hpp
-/// Shared declarations for the two translation units of the OR-2 regression.
+/// Shared declarations for the two translation units of the ceiling regression
+/// test (OR-2).
 
 namespace level_odr {
 

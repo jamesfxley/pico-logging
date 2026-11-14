@@ -17,8 +17,8 @@ int main() {
     pico_logging::testing::CaptureSink sink;
     pico_logging::set_sink(&sink);
 
-    // OR-3: the runtime level is not capped by the library's own translation
-    // unit, so TRACE is reachable from here.
+    // The runtime level is not capped by the library's own translation unit, so
+    // TRACE is reachable from here (OR-3).
     pico_logging::set_level(pico_logging::Level::TRACE);
     if (pico_logging::get_level() != pico_logging::Level::TRACE) {
         std::puts("set_level was capped by the library's translation unit");

@@ -1,5 +1,5 @@
 # One module, not two. sinks.hpp is the base and logging.hpp includes it, but
-# sinks.cpp implements StderrSink in terms of logging.hpp -- so splitting the
+# sinks.cpp implements StderrSink in terms of logging.hpp, so splitting the
 # interface from the statement stream would make each target need the other.
 add_library(pico_logging_logging
     sinks.cpp
@@ -11,9 +11,9 @@ add_library(pico_logging::logging ALIAS pico_logging_logging)
 # tests/core/pico_logging_test.cpp pins the same constants from the host side.
 house_cxx_version_definitions(pico_logging_logging pico_logging PRIVATE)
 
-# Two BASE_DIRS, because this target carries headers belonging to two places:
-# its own module and the umbrella at src/include/. The core and logging
-# targets both carry that installed umbrella header.
+# Two BASE_DIRS, because this target carries headers from two places: its own
+# module and the umbrella at src/include/. The core and logging targets both
+# carry the installed umbrella header.
 target_sources(pico_logging_logging PUBLIC
     FILE_SET HEADERS
     BASE_DIRS

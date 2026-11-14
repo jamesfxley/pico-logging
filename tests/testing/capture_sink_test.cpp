@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-// CaptureSink is a shipped fake, so it needs its own tests: a double whose
-// behaviour nothing pins is a double that drifts from the seam it stands in
-// for, which is the failure this module exists to stop repeating.
+// CaptureSink is a shipped fake, so its behaviour is pinned here: a double
+// nothing pins drifts from the seam it stands in for.
 #include "pico_logging/testing/capture_sink.hpp"
 
 #include <gtest/gtest.h>
@@ -32,8 +31,8 @@ TEST(CaptureSink, RecordsEachLineWholeAndInOrder) {
     EXPECT_FALSE(sink.empty());
 }
 
-// Framing is the thing lines() exists to assert on and str() cannot: two
-// records that arrived as one call would concatenate identically.
+// Framing is what lines() asserts on and str() cannot: two records that arrived
+// as one call would concatenate identically.
 // FR-10
 TEST(CaptureSink, LinesDistinguishesFramingThatStrCannot) {
     CaptureSink split;
@@ -49,9 +48,9 @@ TEST(CaptureSink, LinesDistinguishesFramingThatStrCannot) {
     EXPECT_EQ(joined.writes(), 1U);
 }
 
-// The Sink contract borrows the view for the call. The source is overwritten
-// after the call rather than only freed: a sink that stored the view would
-// then read the new bytes in any build, not only under a sanitizer.
+// The source is overwritten after the call, not only freed, so a sink that
+// stored the view reads the new bytes in any build and not only under a
+// sanitizer.
 // FR-9
 TEST(CaptureSink, CopiesRatherThanBorrowingTheView) {
     CaptureSink sink;
@@ -96,8 +95,7 @@ TEST(CaptureSink, LastOnAnEmptySinkIsAnEmptyView) {
     EXPECT_EQ(sink.writes(), 0U);
 }
 
-// It is a Sink, and has to be usable as one through the base pointer the
-// library installs.
+// Usable as a Sink through the base pointer the library installs.
 // FR-11
 TEST(CaptureSink, WorksThroughTheSinkInterface) {
     CaptureSink sink;

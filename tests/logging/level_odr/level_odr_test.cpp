@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OR-2. Two translation units of one binary, compiled at different ceilings.
-//
-// Were LOGGING_GLOBAL_LEVEL to feed an `inline constexpr` variable or an
-// `inline` function, the two units would hold two definitions of one entity --
-// an ODR violation the linker resolves by keeping one and discarding the other,
-// so which unit logs would depend on link order and optimisation level. The
-// ceiling reaches no linked entity: it is a macro, applied by `if constexpr`
-// inside the PICO_LOG_* macro, so each translation unit decides alone and there
-// is nothing for the linker to choose between. This test links the two units
-// and asserts each behaves as it was compiled.
+// Links two translation units compiled at different ceilings and checks that
+// each behaves as it was compiled.
+// OR-2
 
 #include <gtest/gtest.h>
 

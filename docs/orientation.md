@@ -14,8 +14,8 @@ python3 dev.py gate consumer
 ```
 
 Build enabled trees before linting. The firmware tree needs `PICO_SDK_PATH`;
-`HOUSE_MATRIX_SANITIZE=ON` enables the sanitizer tree. Budgets and symbols
-checks are declared in `pico.toml`.
+`HOUSE_MATRIX_SANITIZE=address` or `thread` enables the sanitizer tree.
+Budgets and symbols checks are declared in `pico.toml`.
 
 ## Layout and traps
 

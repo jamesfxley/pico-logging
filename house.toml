@@ -30,20 +30,9 @@ message = "PICO_LOGGING needs PICO_PLATFORM rp2350"
 
 # The ThreadSanitizer RingSink test runs under setarch -R, which needs
 # personality(ADDR_NO_RANDOMIZE) (CR-4). Docker's default seccomp profile denies
-# it, and a job container starts before checkout, so the dev container's profile
-# file cannot be named here. These rows restate the family rows for every group
-# that builds the host tests and lift the seccomp filter for those jobs only.
-[[ci.require]]
-group = "build"
-matrix = { build_type = ["Debug", "Release"], sanitize = ["ON"] }
-container_options = "--security-opt seccomp=unconfined"
-
-[[ci.require]]
-group = "lint"
-matrix = { sanitize = ["ON"] }
-prepare = ["python3 dev.py build"]
-container_options = "--security-opt seccomp=unconfined"
-
+# it, and a job container starts before checkout. The family's build and lint
+# rows already lift the filter; this row lifts it for the firmware job, whose
+# preparation builds the host tests.
 [[ci.require]]
 group = "firmware"
 matrix = { board = ["pico2_w"] }

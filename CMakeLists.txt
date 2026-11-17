@@ -59,7 +59,7 @@ pico_family_propagate_install(PICO_LOGGING PICO_UTIL)
 # counter, so this is a PUBLIC link and a DEPENDENCIES entry in the package.
 pico_family_dependency(pico_util
     REPOSITORY "https://github.com/jamesfxley/pico-util.git"
-    REVISION 2afe3150a52429cb61c2330041cb4ec2e26c00ef)
+    REVISION 870e68b33012c9052d3336be4ad9abd58d44d4d1)
 pico_family_make_available(pico_util)
 
 add_subdirectory(src)

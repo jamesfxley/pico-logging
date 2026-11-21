@@ -19,13 +19,11 @@ namespace {
 
 using pico_logging::testing::CaptureSink;
 
-// The host's producer lock. It excludes threads, which is what a host test
-// has; a firmware image supplies one that also masks interrupts.
+// The host's producer lock; firmware supplies one that also masks interrupts.
 using Ring2 = pico_logging::RingSink<2, std::mutex>;
 using Ring4 = pico_logging::RingSink<4, std::mutex>;
 
-// Counts lock() and unlock() and refuses a nested lock(), so a test can see
-// that every write() takes the lock exactly once and drain() never does.
+// Counts lock() and unlock() and fails on a nested lock().
 class RecordingLock {
    public:
     void lock() {
@@ -52,10 +50,9 @@ class RecordingLock {
     int unlocks_ = 0;
 };
 
-// Each concurrent line is "<producer>:<sequence>:" followed by a body that is
-// a function of both, and a newline. A line torn between two writes, a slot
-// read before its bytes were published, or a slot read again after reuse
-// fails to reproduce its own body, or repeats or reorders a sequence number.
+// A line is "<producer>:<sequence>:", a body that is a function of both, and a
+// newline. A torn line, an unpublished slot or a reused slot read again fails
+// to reproduce its body or repeats or reorders a sequence number.
 constexpr std::size_t CONCURRENT_BODY = 200;
 
 std::string concurrent_line(int producer, int sequence) {
@@ -90,10 +87,10 @@ std::optional<int> parse_index(std::string_view text) {
 // What check_stream found, or nothing when the stream is sound.
 using StreamFault = std::optional<std::string>;
 
-// Checks a forwarded stream against what `producers` producers each offered
-// `per_producer` lines of: every line is one that was offered, byte for byte;
-// each producer's sequence numbers strictly increase, so none is repeated or
-// reordered; and forwarded plus dropped equals offered.
+// Checks a forwarded stream against `per_producer` lines offered by each of
+// `producers` producers: every line is one offered, byte for byte; each
+// producer's sequence numbers strictly increase; forwarded plus dropped equals
+// offered.
 StreamFault check_stream(const std::vector<std::string>& lines,
                          std::uint32_t dropped, int producers,
                          int per_producer) {
@@ -135,8 +132,8 @@ StreamFault check_stream(const std::vector<std::string>& lines,
     return std::nullopt;
 }
 
-// Runs `producers` threads, each offering `per_producer` numbered lines, and
-// one consumer draining until they finish. Returns the check's verdict.
+// Runs `producers` threads and one consumer draining until they finish, and
+// returns the check's verdict.
 template <typename Lock>
 StreamFault run_concurrently(int producers, int per_producer) {
     CaptureSink target;
@@ -179,8 +176,7 @@ TEST(RingSinkTest, ForwardsQueuedLinesInOrderOnDrain) {
     ring.write("first\n");
     ring.write("second\n");
 
-    // Nothing reaches the target until the consumer asks for it: that is the
-    // whole point of putting this in front of a sink an ISR cannot call.
+    // Nothing reaches the target until the consumer asks for it.
     EXPECT_TRUE(target.lines().empty());
     EXPECT_EQ(ring.size(), 2U);
 
@@ -188,7 +184,7 @@ TEST(RingSinkTest, ForwardsQueuedLinesInOrderOnDrain) {
     ASSERT_EQ(target.lines().size(), 2U);
     EXPECT_EQ(target.lines()[0], "first\n");
     EXPECT_EQ(target.lines()[1], "second\n");
-    // One write and one flush per line, as the Sink contract requires.
+    // One write and one flush per line (FR-2).
     EXPECT_EQ(target.flushes(), 2U);
     EXPECT_EQ(ring.size(), 0U);
     EXPECT_EQ(ring.dropped(), 0U);
@@ -226,8 +222,7 @@ TEST(RingSinkTest, IndicesWrapAndDrainedSlotsAreReused) {
     EXPECT_EQ(ring.size(), 0U);
 }
 
-// A full ring drops whole lines. It never forwards a partial one, which is
-// what lets the target keep assuming one write is one line.
+// A full ring drops whole lines and never forwards a partial one.
 // BR-5, OR-6, AR-4
 TEST(RingSinkTest, AFullRingDropsWholeLinesAndCountsThem) {
     CaptureSink target;
@@ -256,8 +251,7 @@ TEST(RingSinkTest, AFullRingDropsWholeLinesAndCountsThem) {
     EXPECT_EQ(ring.dropped(), 2U);
 }
 
-// A line longer than a slot is dropped rather than truncated: forwarding a
-// prefix would hand the target something that is not a line.
+// A line longer than a slot is dropped and not truncated.
 // BR-5, OR-6
 TEST(RingSinkTest, AnOversizedLineIsDroppedRatherThanTruncated) {
     CaptureSink target;
@@ -298,8 +292,8 @@ TEST(RingSinkTest, LinesRoundTripUnchanged) {
     EXPECT_TRUE(target.lines()[1].empty());
 }
 
-// Every write() takes the producer lock exactly once -- on the drop paths as
-// well as the accepting one -- and drain() takes it never.
+// Every write() takes the lock exactly once, drops included; drain() never
+// does.
 // CR-4
 TEST(RingSinkTest, EveryWriteTakesTheProducerLockOnceAndDrainNever) {
     CaptureSink target;
@@ -318,8 +312,7 @@ TEST(RingSinkTest, EveryWriteTakesTheProducerLockOnceAndDrainNever) {
     EXPECT_EQ(lock.locks(), 3);
 }
 
-// The stream check the concurrent test relies on, shown to fail on each fault
-// it exists to find. A check that has only ever passed establishes nothing.
+// The stream check reports each fault it exists to find.
 // CR-4
 TEST(RingSinkTest, TheStreamCheckRejectsEachFault) {
     const std::string first = concurrent_line(0, 0);
@@ -337,9 +330,8 @@ TEST(RingSinkTest, TheStreamCheckRejectsEachFault) {
     EXPECT_TRUE(check_stream({"garbage\n"}, 1, 1, 2).has_value());
 }
 
-// Several producer threads and one consumer, serialised by the lock the
-// class requires. Every line comes out whole, once, in its producer's order,
-// and whatever did not come out was counted.
+// Several producers and one consumer. Every line comes out whole, once, in its
+// producer's order, and whatever did not was counted.
 // CR-4, OR-6
 TEST(RingSinkTest, SurvivesConcurrentProducersAndAConsumer) {
     constexpr int PRODUCERS = 3;

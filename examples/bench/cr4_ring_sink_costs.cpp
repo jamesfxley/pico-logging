@@ -1,26 +1,18 @@
 // SPDX-License-Identifier: MIT
-// AR-5, CR-4. What a log statement costs the context it runs in, through a
-// RingSink behind the SDK's critical_section and through the default
-// StderrSink.
+// What a log statement costs the context it runs in, through a RingSink behind
+// the SDK's critical_section and through the default StderrSink (AR-5, CR-4).
+// The method, the statements and the conditions are in measurements.md beside
+// this file.
 //
-// Two figures, each with its own negative control:
+// Each of the two figures has a negative control. The stack depth is read from
+// a painted stack, and a function whose frame is at least CONTROL_FRAME bytes
+// reads at least that deep, or the paint or the scan is broken. The lock hold
+// is read from SysTick inside the lock, and a busy-wait of known length under
+// it must read as at least that.
 //
-//   Stack depth. The stack below the caller is painted with a pattern, one
-//   statement runs, and the deepest word no longer holding the pattern is how
-//   far the statement reached -- its own frames, the formatter's, and the
-//   libc calls the timestamp makes. The control is a function whose frame is
-//   known to be at least CONTROL_FRAME bytes: a depth below that means the
-//   paint or the scan is broken and no other row means anything.
-//
-//   Lock hold time. The producer lock is the SDK's critical_section, which
-//   masks interrupts on this core for as long as it is held. A wrapper reads
-//   SysTick at lock() and at unlock(), so the figure is the interval
-//   interrupts were masked, from inside it. The control holds the same lock
-//   across a busy-wait of known length and must read as at least that.
-//
-// Interrupts are masked around each stack measurement so that nothing else
-// writes the painted region while it is being read. Nothing is printed until
-// every figure is captured.
+// Interrupts are masked around each stack measurement so nothing else writes
+// the painted region while it is read. Nothing is printed until every figure
+// is captured.
 
 #include <array>
 #include <cstddef>
@@ -42,9 +34,8 @@ extern "C" char __scratch_y_end__;
 
 namespace {
 
-// RingSink's producer lock on this platform, as ring_sink.hpp documents it,
-// with SysTick read inside the masked interval so the hold time is measured
-// from where interrupts are actually off.
+// RingSink's producer lock on this platform (ring_sink.hpp). SysTick is read
+// inside the masked interval, so the hold is timed while interrupts are off.
 class TimedCriticalSection {
    public:
     TimedCriticalSection() { critical_section_init(&section_); }
@@ -55,9 +46,9 @@ class TimedCriticalSection {
     }
 
     void unlock() {
-        // SysTick counts down, and the reload is its full 24 bits, so the
-        // difference modulo 2^24 is the elapsed count for any hold shorter
-        // than one wrap -- about 110 ms at 150 MHz.
+        // SysTick counts down with a 24-bit reload, so the difference modulo
+        // 2^24 is the elapsed count for any hold under one wrap (about 110 ms
+        // at 150 MHz).
         const std::uint32_t left = systick_hw->cvr;
         const std::uint32_t held = (entered_ - left) & SYSTICK_MASK;
         if (held > longest_) {
@@ -78,8 +69,8 @@ class TimedCriticalSection {
     std::uint32_t longest_ = 0;
 };
 
-// Counts what it is handed and keeps nothing, so the drain side costs little
-// and never touches stdio during a measurement.
+// Counts what it is handed and keeps nothing, so draining costs little and
+// never touches stdio.
 class CountingSink final : public pico_logging::Sink {
    public:
     void write(std::string_view text) override { bytes_ += text.size(); }
@@ -142,12 +133,11 @@ template <typename Statement>
     return depth;
 }
 
-// As measure_depth, but with the USB interrupt left live and every other one
-// disabled at the NVIC rather than masked: the StderrSink path calls the USB
-// stack's tud_task() inline, and only with the USB interrupt running are there
-// transfer events for it to dispatch below the statement's own frames. The
-// USB handler's own frames may land in the figure too, which overstates it,
-// so the result is still a bound. PRIMASK is untouched.
+// As measure_depth, but with the USB interrupt live and every other one
+// disabled at the NVIC, not masked: StderrSink calls the USB stack's tud_task()
+// inline, and only a live USB interrupt gives it transfer events to dispatch.
+// The handler's own frames may land in the figure, which overstates it, so it
+// is still a bound. PRIMASK is untouched.
 template <typename Statement>
 [[gnu::noinline]] std::uintptr_t measure_depth_usb_live(Statement statement) {
     std::array<bool, NUM_IRQS> enabled{};
@@ -242,11 +232,10 @@ int main() {
     }};
     ring.drain();
 
-    // AR-5 again through the default StderrSink, the path most consumers run:
-    // fwrite into newlib's stdio, then the SDK's USB CDC driver, with the USB
-    // interrupt live so the driver has transfer events to dispatch. Without a
-    // host attached the driver is never called, so that is recorded and the
-    // rows are refused rather than read as covering it.
+    // The stack depth again through the default StderrSink, the path most
+    // consumers run (AR-5), with the USB interrupt live. Without a host
+    // attached the USB driver is never called; that is recorded and the rows
+    // are withheld, not read as covering it.
     const bool usb_reached = stdio_usb_connected();
     pico_logging::set_sink(nullptr);
     const std::array<Row, 5> stderr_depths{{

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OR-2. Compiled at LOGGING_GLOBAL_LEVEL=1; see verbose_unit.cpp, which is the
-// same source compiled at 4, and level_odr_test.cpp, which links both.
+// Compiled at LOGGING_GLOBAL_LEVEL=1. verbose_unit.cpp is the same source
+// compiled at 4, and level_odr_test.cpp links both.
+// OR-2
 
 #include "level_units.hpp"
 #include "pico_logging/logging/logging.hpp"

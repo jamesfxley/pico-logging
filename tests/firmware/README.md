@@ -1,9 +1,9 @@
 # Cross-compiled probes
 
-Three images built by the cross tree, none of which is ever run. They exist so
-the linker has to resolve the paths a gate then inspects. The tree is
-configured through the Pico SDK, but no probe links an SDK library, so what
-each image contains is this library and newlib:
+The cross tree builds three images, and none of them is run. They exist so the
+linker has to resolve the paths a gate then inspects. The tree is configured
+through the Pico SDK, but no probe links an SDK library, so each image contains
+this library and newlib:
 
 ```sh
 python3 dev.py build --tree firmware
@@ -26,11 +26,11 @@ the image and `c-heap-alloc` over its objects, and the footprint budget.
 `pico.toml` holds their budgets and symbol sets; `python3 dev.py check --list`
 names the gates.
 
-The two symbol gates have a negative control each, the two fixtures above,
-declared in `pico.toml` as `[[symbols]]` tables with `expect = "refused"`. That the footprint gate refuses an image
-over either budget is shown by pico-tooling's own suite. A gate that has only
-ever been seen to pass is not evidence.
+Each symbol gate has a negative control, one of the two fixtures above,
+declared in `pico.toml` as a `[[symbols]]` table with `expect = "refused"`.
+pico-tooling's own suite shows that the footprint gate rejects an image over
+either budget.
 
 `measurements.md` beside this file records what the probe measured and under
-what conditions. It is a run record, not a requirement: re-measure rather than
-cite it if the toolchain or the formatter changes.
+what conditions. It is a run record and not a requirement: if the toolchain or
+the formatter changes, re-measure and do not cite it.

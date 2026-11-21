@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// CR-4: mainline and hardware-alarm IRQ producers share the SDK lock.
+// Mainline and hardware-alarm IRQ producers share the SDK lock (CR-4).
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -33,7 +33,7 @@ struct Offered {
 };
 
 // Each record carries its producer and sequence, including embedded zeroes.
-// Alternating short and maximum-length records exercise whole-slot copying.
+// Short and maximum-length records alternate, to exercise whole-slot copying.
 Offered offered(std::size_t producer, std::size_t sequence) {
     Offered result;
     result.length = sequence % 2 == 0 ? result.bytes.size() : 17 + sequence;

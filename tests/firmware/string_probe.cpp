@@ -6,7 +6,7 @@
 
 #include "pico_logging/logging/logging.hpp"
 
-// AR-1: compile-only object, so debug string formatting adds no image code.
+// A compile-only object, so debug string formatting adds no image code (AR-1).
 int main(int argc, char** argv) {
     const std::span args(argv, static_cast<std::size_t>(argc));
     if (args.empty()) {

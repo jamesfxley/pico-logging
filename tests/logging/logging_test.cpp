@@ -32,8 +32,8 @@ struct SinkGuard {
     SinkGuard& operator=(SinkGuard&&) = delete;
 };
 
-// Restores the runtime level on scope exit, so a test that moves it cannot
-// leak that into the next one through the shared module state.
+// Restores the runtime level on scope exit, so a moved level cannot leak into
+// the next test.
 struct LevelGuard {
     LevelGuard() : original_(pico_logging::get_level()) {}
 
@@ -48,8 +48,8 @@ struct LevelGuard {
     pico_logging::Level original_;
 };
 
-// Counts operand evaluations. A function-local static rather than a namespace
-// variable so the counter needs no suppression to exist.
+// Counts operand evaluations. A function-local static and not a namespace
+// variable, which would need a suppression.
 int& evaluation_count() {
     static int count = 0;
     return count;
@@ -94,7 +94,6 @@ TEST(LoggingTest, FilenameOnlyStripsDirectorySeparators) {
     EXPECT_STREQ(::pico_logging::filename_only("path/to/file.cpp"), "file.cpp");
     EXPECT_STREQ(::pico_logging::filename_only("path\\to\\file.cpp"),
                  "file.cpp");
-    // Mixed separators: the later one wins, whichever style it is.
     EXPECT_STREQ(::pico_logging::filename_only("C:\\src\\lib/deep\\file.cpp"),
                  "file.cpp");
     EXPECT_STREQ(::pico_logging::filename_only("C:\\src/lib/file.cpp"),
@@ -103,19 +102,15 @@ TEST(LoggingTest, FilenameOnlyStripsDirectorySeparators) {
     EXPECT_STREQ(::pico_logging::filename_only("/"), "");
 }
 
-// A char array is not necessarily a string literal: deduction through `const
-// T&` strips top-level const, so a mutable scratch buffer takes the same
-// branch. Reading to the extent would emit the trailing NULs and, where the
-// buffer was only partly written, the indeterminate bytes behind them.
+// Reading to the array's full extent would emit the trailing NULs.
 // FR-4
 TEST(LoggingTest, CharArrayInserterStopsAtTheTerminator) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
 
-    // The shape this library exists for: a fixed scratch buffer filled well
-    // short of its extent. A C array is the type under test -- std::array is
-    // not an array type and selects a different inserter branch, so applying
-    // the check's remedy would delete the test.
+    // A fixed scratch buffer filled well short of its extent. A C array is the
+    // type under test, and std::array selects a different branch, so the
+    // remedy for modernize-avoid-c-arrays would delete the test.
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     const char address[16] = "192.168.0.42";
     PICO_LOG_WARN << "ip=[" << address << "]";
@@ -131,8 +126,8 @@ TEST(LoggingTest, CharArrayInserterHandlesTheEdgeShapes) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
 
-    // No terminator anywhere in the extent: render the whole array, and read
-    // no further than it. A C array is the type under test; see the note in
+    // No terminator in the extent: the whole array renders and nothing past it
+    // is read. A C array is the type under test, as in
     // CharArrayInserterStopsAtTheTerminator.
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     const char unterminated[4] = {'a', 'b', 'c', 'd'};
@@ -140,7 +135,7 @@ TEST(LoggingTest, CharArrayInserterHandlesTheEdgeShapes) {
     EXPECT_NE(sink.str().find("[abcd]"), std::string::npos) << sink.str();
 
     sink.clear();
-    // A C array is the type under test; see the note above.
+    // A C array is the type under test, as above.
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     const char empty[8] = "";
     PICO_LOG_WARN << "[" << empty << "]";
@@ -151,9 +146,6 @@ TEST(LoggingTest, CharArrayInserterHandlesTheEdgeShapes) {
     EXPECT_NE(sink.str().find("[literal]"), std::string::npos) << sink.str();
 }
 
-// is_enabled() reads the runtime level alone. It cannot fold in the
-// compile-time ceiling: an inline function that did would have a different
-// definition in every translation unit compiled at a different level.
 // OR-2
 TEST(LoggingTest, IsEnabledReflectsTheRuntimeLevelAlone) {
     using ::pico_logging::Level;
@@ -164,15 +156,13 @@ TEST(LoggingTest, IsEnabledReflectsTheRuntimeLevelAlone) {
     EXPECT_TRUE(::pico_logging::is_enabled(Level::WARN));
     EXPECT_FALSE(::pico_logging::is_enabled(Level::INFO));
 
-    // Above this TU's ceiling of 2, so no statement at DBG can fire here --
-    // but is_enabled() answers only the runtime question, and says so.
+    // DBG is above this TU's ceiling of 2, yet is_enabled() answers true.
     ::pico_logging::set_level(Level::DBG);
     EXPECT_TRUE(::pico_logging::is_enabled(Level::DBG));
 }
 
-// PICO_LOG_ENABLED_<LEVEL> is the combined check, and the only one that can see
-// this TU's ceiling, because it is a macro expanded here rather than a linked
-// entity. OR-1
+// PICO_LOG_ENABLED_<LEVEL> is the combined check, and the only one that sees
+// this TU's ceiling. OR-1
 TEST(LoggingTest, LogEnabledCombinesBothFilters) {
     using ::pico_logging::Level;
     const LevelGuard guard;
@@ -189,11 +179,8 @@ TEST(LoggingTest, LogEnabledCombinesBothFilters) {
     EXPECT_FALSE(PICO_LOG_ENABLED_WARN);
 }
 
-// FR-1: one statement is one line, whatever the message carries. A newline in
-// text from outside would otherwise end the record and start a second one that
-// names any file and level the text likes; control bytes render as escapes,
-// a backslash doubles so every escape is unambiguous, and UTF-8 -- every byte
-// from 0x80 up -- passes through as written.
+// Control bytes render as escapes, a backslash doubles, UTF-8 passes through.
+// FR-1
 TEST(LoggingTest, ControlCharactersInTextAreEscaped) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -228,9 +215,8 @@ TEST(LoggingTest, LogLineWritesWhenEnabled) {
     PICO_LOG_WARN << "warning" << TEST_VALUE;
     const std::string& enabled_output = sink.str();
     EXPECT_NE(enabled_output.find("WARN"), std::string::npos);
-    // The location field, whole: this file's name, the line, and the separator
-    // before the message. The timestamp carries colons of its own, so nothing
-    // short of the whole field shows the location is there.
+    // The whole location field, because the timestamp carries colons of its
+    // own and nothing shorter shows the location is there.
     const std::regex location(R"(\] logging_test\.cpp:\d+: warning42\n$)");
     EXPECT_TRUE(std::regex_search(enabled_output, location))
         << "actual: " << enabled_output;
@@ -247,19 +233,17 @@ TEST(LoggingTest, HeaderStartsWithFormattedTimestamp) {
 
     PICO_LOG_WARN << "x";
     // Regression for the too-small strftime buffer: the seconds field must be
-    // a complete "YYYY-MM-DD HH:MM:SS.mmm", not garbage/truncated.
+    // a complete "YYYY-MM-DD HH:MM:SS.mmm", not garbage or truncated.
     const std::regex timestamp_prefix(
         R"(^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \[)");
     EXPECT_TRUE(std::regex_search(sink.str(), timestamp_prefix))
         << "actual: " << sink.str();
 }
 
-// FR-8, the reachable half. A buffer too small to hold the field yields an
-// empty view rather than a partial date, which is the same rule as the
-// unconvertible-clock arm and the only one a host test can drive: system_clock
-// is nanosecond-based, so every instant it can represent is inside the range
-// localtime_r converts, and the other arm needs a faked libc rather than an
-// input.
+// The too-small-buffer arm of format_timestamp is the only one a host test can
+// drive; the FR-8 row of the traceability matrix in
+// docs/technical-specification.md says why.
+// FR-8
 TEST(LoggingTest, ATooSmallBufferLeavesTheTimestampEmpty) {
     std::array<char, pico_logging::TIMESTAMP_BUFFER_SIZE - 1> buffer{};
 
@@ -269,8 +253,9 @@ TEST(LoggingTest, ATooSmallBufferLeavesTheTimestampEmpty) {
     EXPECT_TRUE(rendered.empty()) << "rendered: " << rendered;
 }
 
-// FR-7. The allocation suite inserts a null char* and asserts only that
-// nothing allocates; what a consumer greps for is the text.
+// The allocation suite inserts a null char* and asserts only that nothing
+// allocates. What a consumer greps for is the text.
+// FR-7
 TEST(LoggingTest, ANullCharPointerRendersAsNull) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -289,7 +274,7 @@ TEST(LoggingTest, FormatsAllIntegerWidthsAndScalars) {
 
     // int8_t is the lwIP err_t type. The fixed-width aliases name different
     // fundamental types per platform, so every fundamental width is inserted
-    // below as well: whichever one an alias resolves to has been covered.
+    // below as well.
     constexpr std::int8_t I8 = -5;
     constexpr std::int32_t I32 = -2000000000;
     constexpr unsigned int UINT = 7U;
@@ -308,7 +293,8 @@ TEST(LoggingTest, FormatsAllIntegerWidthsAndScalars) {
     EXPECT_NE(out.find("c=Q"), std::string::npos) << out;
 }
 
-// FR-3: both compiled integer widths retain their complete value range.
+// Both compiled integer widths retain their complete value range.
+// FR-3
 TEST(LoggingTest, FormatsIntegerExtrema) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -342,9 +328,8 @@ TEST(LoggingTest, EveryFundamentalIntegralTypeRendersItsValue) {
                    : out;
     };
 
-    // Each type is taken from a literal of that type, or from the fixed-width
-    // alias that names it on every target this builds for, so the fundamental
-    // type under test is exact without being spelled.
+    // Each value comes from a literal of its type or from the fixed-width alias
+    // naming it on every target, so the fundamental type is exact.
     constexpr std::int16_t SHORT = -300;
     constexpr auto LONG = -70000L;
     constexpr auto LONG_LONG = -5000000000LL;
@@ -376,8 +361,9 @@ TEST(LoggingTest, EveryFundamentalIntegralTypeRendersItsValue) {
     EXPECT_EQ(rendered(L'D'), "68");
 }
 
-// FR-7: nullptr converts to std::string_view in C++20, and a string_view
-// built from it reads address zero. It renders as a null char* does.
+// nullptr converts to std::string_view in C++20, and a string_view built from
+// it reads address zero. It renders as a null char* does.
+// FR-7
 TEST(LoggingTest, NullptrRendersAsNull) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -387,8 +373,7 @@ TEST(LoggingTest, NullptrRendersAsNull) {
     EXPECT_NE(sink.str().find("[(null)]"), std::string::npos) << sink.str();
 }
 
-// The fallback is part of the contract, not an accident: a type with no
-// inserter renders as a placeholder and the statement still compiles.
+// A type with no inserter renders as a placeholder and still compiles.
 // FR-3
 TEST(LoggingTest, ATypeWithNoInserterRendersAsAPlaceholder) {
     CaptureSink sink;
@@ -423,8 +408,7 @@ TEST(LoggingTest, TruncatesOverlongMessageWithSingleMarker) {
                               pico_logging::LOG_BUFFER_CAPACITY + 2);
 }
 
-// The Sink contract: one write() per line, then one flush(). Separate writes
-// would let a second context interleave its own line between them.
+// The Sink contract: one write() per line, then one flush().
 // FR-2, FR-5
 TEST(LoggingTest, EachLineIsExactlyOneWriteAndOneFlush) {
     CaptureSink sink;
@@ -476,9 +460,8 @@ TEST(LoggingTest, TruncatesOnlyBeyondTheExactCapacity) {
         << "one byte over must truncate";
 }
 
-// The marker must not itself be truncated. With two bytes left there is
-// nothing to reserve, so an append() that copies whatever fits ends the line
-// in "..", which reads as complete to anything matching on the marker.
+// The marker must not itself be truncated: with two bytes left, an append()
+// that copied whatever fits would end the line in "..".
 // BR-2
 TEST(LoggingTest, TheTruncationMarkerAlwaysLandsWhole) {
     CaptureSink sink;
@@ -525,10 +508,10 @@ TEST(LoggingTest, TheTruncationMarkerAlwaysLandsWhole) {
     }
 }
 
-// BR-2 and FR-1: the cut never lands inside an escape. A partial `\x0` or a
-// lone `\` before the marker would read as text that spells an escape, which
-// FR-1's escaping exists to rule out. Every position the rewind can reach is
-// walked, for a two-byte and a four-byte escape.
+// A cut never lands inside an escape: a partial `\x0` or a lone `\` would read
+// as text that spells one. Every rewind position is walked for both escape
+// sizes.
+// BR-2, FR-1
 TEST(LoggingTest, TheCutNeverSplitsAnEscape) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -553,10 +536,11 @@ TEST(LoggingTest, TheCutNeverSplitsAnEscape) {
     }
 }
 
-// BR-2 and FR-1 with two escapes side by side: a rewind is at most three bytes
-// and an escape at least two, so the cut can reach into the second-last escape
-// as well as the last. Every ordered pair of a two-byte and a four-byte escape
-// is walked across every position the rewind can reach.
+// A rewind is at most three bytes and an escape at least two, so with two
+// escapes side by side the cut can reach the second-last as well as the last.
+// Every ordered pair of two- and four-byte escapes is walked across every
+// rewind position.
+// BR-2, FR-1
 TEST(LoggingTest, TheCutNeverSplitsAdjacentEscapes) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
@@ -611,10 +595,8 @@ TEST(LoggingTest, CustomSinkReceivesOutputAndDefaultRestored) {
     EXPECT_NE(pico_logging::get_sink(), nullptr);
 }
 
-// set_level() stores what it is given. The ceiling is a per-TU filter and does
-// not belong in this shared value: clamping against the ceiling compiled into
-// sinks.cpp would leave a consumer built at LOGGING_GLOBAL_LEVEL=5 unable to
-// reach Level::TRACE.
+// set_level() stores what it is given and does not clamp against the ceiling
+// compiled into sinks.cpp.
 // OR-3, CR-1
 TEST(LoggingTest, SetLevelStoresWhatItIsGiven) {
     using pico_logging::Level;
@@ -630,8 +612,6 @@ TEST(LoggingTest, SetLevelStoresWhatItIsGiven) {
     EXPECT_EQ(pico_logging::get_level(), Level::NONE);
 }
 
-// The two filters differ in what they cost, and the difference is why the
-// ceiling is applied in the macro.
 // OR-1
 TEST(LoggingTest, CompileTimeCeilingDiscardsOperandsAndRuntimeFilterDoesNot) {
     using pico_logging::Level;
@@ -641,15 +621,15 @@ TEST(LoggingTest, CompileTimeCeilingDiscardsOperandsAndRuntimeFilterDoesNot) {
 
     pico_logging::set_level(Level::TRACE);
 
-    // INFO is above this TU's ceiling of 2, so the whole statement -- the
-    // operand with it -- is discarded by `if constexpr` in the macro.
+    // INFO is above this TU's ceiling of 2, so the whole statement, operand
+    // included, is discarded by `if constexpr` in the macro.
     evaluation_count() = 0;
     PICO_LOG_INFO << counted_operand();
     EXPECT_EQ(evaluation_count(), 0);
     EXPECT_TRUE(sink.str().empty());
 
     // WARN passes the ceiling but not the runtime level, so the LogLine is
-    // constructed and each `<<` is a no-op -- the operand is still evaluated.
+    // constructed and each `<<` is a no-op, and the operand is still evaluated.
     pico_logging::set_level(Level::ERR);
     evaluation_count() = 0;
     PICO_LOG_WARN << counted_operand();
@@ -664,11 +644,10 @@ TEST(LoggingTest, AFilteredStatementDoesNotCaptureATrailingElse) {
     CaptureSink sink;
     const SinkGuard guard(&sink);
 
-    // Deliberately unbraced. The braced form is not at risk and cannot detect
-    // the hazard: braces are precisely what disambiguates the `else`, so a
-    // braced version of this test passes whatever the macro does. The
-    // unbraced shape is the property under test, which is why the brace rule
-    // is suppressed for the region rather than the code being "fixed".
+    // readability-braces-around-statements is suppressed for this region
+    // because the unbraced shape is the property under test: braces
+    // disambiguate the `else`, so a braced version passes whatever the macro
+    // does.
     // NOLINTBEGIN(readability-braces-around-statements)
     bool took_else = false;
     if (sink.str().empty())
@@ -687,9 +666,7 @@ TEST(LoggingTest, AFilteredStatementDoesNotCaptureATrailingElse) {
     EXPECT_TRUE(took_else);
 }
 
-// Last in the file: #line renames the file for every line after it. A file
-// name too long for the header keeps its end behind the cut marker, and the
-// line number and the separator before the message land whole.
+// Last in the file: #line renames the file for every line after it.
 // BR-4
 TEST(LoggingTest, AnOverlongFileNameIsCutFromTheFrontAndTheLineSurvives) {
     CaptureSink sink;

@@ -1,15 +1,16 @@
-# Paths excluded from compile-db coverage, one git pathspec per line, `#` for a comment.
+# Paths excluded from compile-database coverage, one git pathspec per line, `#`
+# for a comment.
 #
-# For a directory some *other* build owns, whose sources are therefore absent
-# from this tree's compile database — linting them would run clang-tidy on
-# invented flags, the failure CXX-00.6 is about. Never for code this build
-# compiles, which must be linted. Not a suppression: everything named here is
-# still compiled under warnings-as-errors by the project that owns it.
+# The compile-database coverage check reads this file. Lint enumerates compile
+# commands, so the listed sources are absent from its inputs. Every tracked
+# translation unit is either linted or declared absent here with a written
+# reason.
 #
-# The compile-db coverage check reads this file. Lint enumerates compile
-# commands, so these sources are absent from its inputs. Every
-# tracked translation unit is either linted or declared absent here with a
-# written reason.
+# List a directory only when some other build owns it, so that its sources are
+# absent from this tree's compile database. Linting them would run clang-tidy on
+# invented flags, the failure CXX-00.6 is about. Never list code this build
+# compiles, which must be linted. A listing is not a suppression: the project
+# that owns the sources still compiles them under warnings-as-errors.
 
 # The installed-package consumers (tests/consumer and the sources of the
 # declared consumer cases): separate CMake projects configured against an
@@ -19,6 +20,6 @@
 tests/consumer/*
 tests/consumer-level/*
 
-# The Pico SDK measurement rig behind AR-2 (examples/bench/measurements.md).
+# The Pico SDK measurement rigs, described in examples/bench/measurements.md.
 # Standalone CMake project; its sources belong to a separate SDK build.
 examples/bench/*

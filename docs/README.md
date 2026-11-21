@@ -3,35 +3,34 @@
 | Document | What it is | Read it when |
 |---|---|---|
 | [traceability-exceptions.txt](traceability-exceptions.txt) | Requirements no source file can cite (EN-02.7). | Reviewing uncitable requirements. |
-| [orientation.md](orientation.md) | How this repository is built and gated, how it is laid out, and the repository's invariants and traps | Working in it for the first time, or before an edit |
-| [technical-specification.md](technical-specification.md) | **Normative.** Requirement IDs (`AR`/`FR`/`BR`/`CR`/`OR`), their pass criteria, and the traceability matrix | Deciding whether a behaviour is required or incidental, or changing one |
-| [architecture.md](architecture.md) | Descriptive. How the implementation is put together — a statement's life, the two filters, the float formatter, the sinks | Working out where a change belongs |
+| [orientation.md](orientation.md) | How this repository is built and gated, how it is laid out, and its invariants and traps | Working in it for the first time, or before an edit |
+| [technical-specification.md](technical-specification.md) | Normative. Requirement IDs (`AR`/`FR`/`BR`/`CR`/`OR`), their pass criteria and the traceability matrix | Deciding whether a behaviour is required or incidental, or changing one |
+| [architecture.md](architecture.md) | Descriptive. How the implementation is put together: a statement's path, the two filters, the float formatter, the sinks | Working out where a change belongs |
 | [usage-guide.md](usage-guide.md) | Practical use beyond the README: bringing it up in firmware, choosing a filter, the per-TU ceiling, the no-allocation guarantee, logging from an ISR | Building an application on the library |
 | [future-work.md](future-work.md) | Work deliberately not built, one entry per deferral, each with its reason and what would have to be true to build it | Asking whether something is absent on purpose, or before proposing it |
 | [deviations.md](deviations.md) | Standing (scope-wide) deviations from the coding standard, each with a rationale, a risk assessment and a review date | Adding or reviewing a suppression |
-| [deviation-budget.txt](deviation-budget.txt) | Per-language suppression ceilings. These only ever ratchet down | Same |
+| [deviation-budget.txt](deviation-budget.txt) | Per-language suppression ceilings, which only ever ratchet down | Adding or reviewing a suppression |
 | [requirement-prefixes.txt](requirement-prefixes.txt) | The requirement prefix convention checked by review | Adding a requirement under a new prefix |
 | [GitHub Releases](https://github.com/jamesfxley/pico-logging/releases) | What changed in each release, and what to change in your code when an API broke | Upgrading across a release |
 
 Measured results are not in this directory. A run record lives beside the rig
 that produced it, with the conditions it was taken under (`EN-03.2`):
-[examples/bench/measurements.md](../examples/bench/measurements.md) for the AR-2
-device run, [tests/firmware/measurements.md](../tests/firmware/measurements.md)
-for the cross-compiled probe's footprint.
+[examples/bench/measurements.md](../examples/bench/measurements.md) for the
+device runs (allocation through the default sink, stack depth, the timestamp
+lock), [tests/firmware/measurements.md](../tests/firmware/measurements.md) for
+the cross-compiled probe's footprint.
 
 The specification is the only normative document here. `architecture.md`
-describes what is, and work deliberately not done is an entry in
-[future-work.md](future-work.md) (`EN-03.7`); the issue tracker holds defects.
+describes the implementation as it is. Work deliberately not done is an entry in
+[future-work.md](future-work.md) (`EN-03.7`), and the issue tracker holds
+defects.
 
 A behaviour claimed in `README.md` or `docs/orientation.md` but absent from the
 specification is not a commitment, and a requirement is not satisfied until the
 matrix names what establishes it.
 
-The repository `README.md` is the surface — the macros, the filters, the `Sink`
-interface. `usage-guide.md` is the other half: bringing it up in a real image.
-
-The API reference is generated from the headers rather than written by hand, so
-it cannot drift from the declarations it documents:
+The API reference is generated from the headers, so it cannot drift from the
+declarations it documents:
 
 ```sh
 doxygen docs/Doxyfile      # -> docs/api/html/index.html (gitignored)
@@ -42,13 +41,13 @@ entity.
 
 ## Conventions
 
-- Requirement IDs are stable and never renumbered. Code and tests cite the ID,
-  never a section number: IDs survive a reorganisation of this document and
-  section numbers do not. Review checks that specification IDs are cited by code or tests;
-  `requirement-prefixes.txt` records their prefix convention.
-- The specification states what is true now — no dates, no version history, no
-  measured values. It may state a normative gate ("within a CI-enforced
-  budget") but not a measurement; a measured figure is a run record and lives
-  beside the rig that produced it (`EN-03.2`).
+- Requirement IDs follow
+  [EN-02.2 and EN-02.3](../infra/house/standard/engineering/02-spec-and-traceability.md).
+  Review checks that code or tests cite each specification ID;
+  `requirement-prefixes.txt` records the prefix convention.
+- The specification states what is true now, with no dates, version history or
+  measured values. It may state a normative gate ("within a CI-enforced budget")
+  but not a measurement. A measured figure is a run record and lives beside the
+  rig that produced it (`EN-03.2`).
 - A behaviour change lands as one change: the specification row, a host test,
   and the affected documents together.

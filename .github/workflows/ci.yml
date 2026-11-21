@@ -51,7 +51,8 @@
       "fail-fast": false
       "matrix":
         "sanitize":
-          - "ON"
+          - "address"
+          - "thread"
     "env":
       "HOUSE_MATRIX_SANITIZE": "${{ matrix.sanitize }}"
     "container":
@@ -74,7 +75,8 @@
           - "Debug"
           - "Release"
         "sanitize":
-          - "ON"
+          - "address"
+          - "thread"
     "env":
       "HOUSE_MATRIX_BUILD_TYPE": "${{ matrix.build_type }}"
       "HOUSE_MATRIX_SANITIZE": "${{ matrix.sanitize }}"

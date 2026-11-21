@@ -8,7 +8,7 @@ defines.
 ### What is absent
 
 The library builds only for RP2350 boards. A firmware build for an RP2040 board
-such as the Pico W is refused at configure (AR-6), and no CI leg builds it.
+such as the Pico W fails at configure (AR-6), and no CI leg builds it.
 
 ### Why it is not built
 
@@ -19,7 +19,7 @@ fails at `src/logging/sinks.cpp`; the library therefore declares
 `PLATFORM rp2350`. Aligned 32-bit loads and stores exist on ARMv6-M, and only
 read-modify-write does not. No consumer has needed an RP2040 build, so
 re-specifying CR-1 to the operations the log path performs has not been
-prioritized.
+prioritised.
 
 ### What would have to be true to build it
 

@@ -2,14 +2,12 @@ set(PICO_LOGGING_PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory(logging)
 
-# The capture sink stands in for a Sink a consumer's test would otherwise
-# hand-roll. Host-only: it uses the heap, which is right for a fake and wrong
-# for a firmware image.
+# Host-only; see src/testing/CMakeLists.txt.
 if(NOT PICO_LOGGING_BUILD_FIRMWARE)
     add_subdirectory(testing)
 endif()
 
-# The umbrella, belonging to no module (CXX-13.1) but installed by some target.
+# The umbrella belongs to no module but is installed by some target. It is
 # INTERFACE: it carries the one header and links the module that implements it,
 # so a consumer needs one target.
 add_library(pico_logging_core INTERFACE)

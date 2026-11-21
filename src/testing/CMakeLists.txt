@@ -1,13 +1,12 @@
-# Test support that ships (EN-04.1): its consumers are the sibling repositories'
-# test trees, and a hand-written double drifts from the seam it stands in for.
+# Test support that ships: its consumers are the sibling repositories' test
+# trees.
 #
-# Header-only, so INTERFACE -- CaptureSink is a few inline members over
-# std::string and std::vector, and adding a translation unit would give a
-# consumer an object to link for nothing.
+# Header-only, so INTERFACE: a translation unit would give a consumer an object
+# to link for nothing.
 #
-# Host-only. It uses the heap freely, which is right for a fake and wrong for a
-# firmware image; the cross build never creates this target, and the export set
-# names it only on a host build for the same reason.
+# Host-only: it uses the heap freely, which suits a fake and not a firmware
+# image, so the cross build never creates it and the export set names it only
+# on a host build.
 add_library(pico_logging_testing INTERFACE)
 add_library(pico_logging::testing ALIAS pico_logging_testing)
 

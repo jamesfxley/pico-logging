@@ -35,10 +35,10 @@ Not breaking under `EN-06.1`: it adds a platform.
 
 ### Affected repositories
 
-pico-logging, pico-time, pico-http and pico-bno085. Each of the other three
-has a partner entry that cites this one. pico-time and pico-http link
-pico-logging and are refused on the RP2040 through it. pico-bno085 also
-declares `PLATFORM rp2350`.
+pico-logging; pico-time:FW-1, pico-http:FW-1 and pico-bno085:FW-1, partner
+entries that cite this one. pico-time and pico-http link pico-logging and are
+refused on the RP2040 through it. pico-bno085 also declares
+`PLATFORM rp2350`.
 
 ## FW-2 — Per-module log levels
 

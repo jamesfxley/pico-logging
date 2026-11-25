@@ -180,10 +180,17 @@ inline const char* filename_only(const char* path) noexcept {
     }
 
     // The later separator wins, so "C:\src\lib/deep\file.cpp" splits at its
-    // last. Both pointers address `path`, so comparing them is defined.
+    // last. Either result can be null, and comparing a null pointer with one
+    // into `path` gives an unspecified result, so only two non-null results
+    // are compared.
     const char* last_forward = std::strrchr(path, '/');
     const char* last_backward = std::strrchr(path, '\\');
-    const char* candidate = std::max(last_forward, last_backward);
+    const char* candidate = last_forward;
+    if (candidate == nullptr) {
+        candidate = last_backward;
+    } else if (last_backward != nullptr) {
+        candidate = std::max(last_forward, last_backward);
+    }
     return candidate != nullptr ? std::next(candidate) : path;
 }
 
